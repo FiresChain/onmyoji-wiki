@@ -1,0 +1,26 @@
+{
+  "name": "onmyoji-wiki",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@logicflow/core": "^2.0.16",
+    "@logicflow/extension": "^2.0.21",
+    "@logicflow/vue-node-registry": "^1.0.18",
+    "@nuxt/content": "^3.10.0",
+    "better-sqlite3": "^12.6.2",
+    "nuxt": "^3.13.0",
+    "vue": "latest",
+    "yys-editor": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0"
+  }
+}
