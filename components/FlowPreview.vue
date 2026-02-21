@@ -70,6 +70,7 @@ const exportData = () => {
       <YysEditorPreview
         v-else
         ref="previewRef"
+        mode="preview"
         :data="flowData"
         :height="height"
         :show-mini-map="showMiniMap"

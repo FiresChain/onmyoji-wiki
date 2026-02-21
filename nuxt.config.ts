@@ -11,7 +11,20 @@ export default defineNuxtConfig({
       exclude: ['yys-editor']
     },
     ssr: {
-      noExternal: ['yys-editor']
+      noExternal: [
+        'yys-editor',
+        '@logicflow/core',
+        '@logicflow/extension',
+        '@logicflow/vue-node-registry'
+      ]
+    },
+    server: {
+      fs: {
+        allow: [
+          // 允许访问 yys-editor（npm link 时需要）
+          '../yys-editor'
+        ]
+      }
     }
   },
 
