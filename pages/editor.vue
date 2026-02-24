@@ -1,8 +1,34 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import MilkdownEditor from '~/components/editor/MilkdownEditor.client.vue'
+import MarkdownIt from 'markdown-it'
+import MilkdownEditor, { type MilkdownEditorHandle } from '~/components/editor/MilkdownEditor.client.vue'
+import { YysEditorPreview } from 'yys-editor'
+import 'yys-editor/style.css'
 import { FileSystemEditorStorageAdapter } from '~/utils/editor-storage/file-system'
 import { LocalStorageEditorStorageAdapter } from '~/utils/editor-storage/local-storage'
+
+type GraphData = {
+  nodes: any[]
+  edges: any[]
+}
+
+type FlowSegment = {
+  type: 'flow'
+  key: string
+  blockIndex: number
+  graphData: GraphData
+  raw: string
+  error: string
+}
+
+type MarkdownSegment = {
+  type: 'markdown'
+  key: string
+  content: string
+  html: string
+}
+
+type PreviewSegment = FlowSegment | MarkdownSegment
 
 const DEFAULT_MARKDOWN = `# Onmyoji Wiki Editor
 
@@ -11,7 +37,17 @@ const DEFAULT_MARKDOWN = `# Onmyoji Wiki Editor
 - 默认会自动保存到 localStorage
 - 支持导入 / 导出 markdown 与 json
 - 在支持 File System Access API 的浏览器中，可选择本地目录并回写原文件
+
+点击上方“插入流程块”后，可在右侧预览点击流程块并打开 yys-editor 进行可视化编辑。
 `
+
+const EMPTY_GRAPH_DATA: GraphData = { nodes: [], edges: [] }
+const FLOW_BLOCK_REGEX = /```yys-flow[^\r\n]*\r?\n([\s\S]*?)```/g
+const markdownRenderer = new MarkdownIt({
+  html: false,
+  breaks: true,
+  linkify: true
+})
 
 const markdown = ref(DEFAULT_MARKDOWN)
 const localAdapter = new LocalStorageEditorStorageAdapter()
@@ -28,6 +64,11 @@ const selectedFile = ref('')
 const autosaveLabel = ref('未保存')
 const importing = ref(false)
 const savingToFile = ref(false)
+const flowEditorVisible = ref(false)
+const editingBlockIndex = ref<number | null>(null)
+const editingGraphData = ref<GraphData>(EMPTY_GRAPH_DATA)
+const flowEditorRef = ref<any>(null)
+const milkdownRef = ref<MilkdownEditorHandle | null>(null)
 
 const importInput = ref<HTMLInputElement | null>(null)
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -45,35 +86,115 @@ const canRefreshFiles = computed(() => (
   isFsSupported.value && fileSystemAdapter.hasDirectory()
 ))
 
-onMounted(async () => {
-  isFsSupported.value = fileSystemAdapter.isSupported()
-  capabilityMessage.value = isFsSupported.value
-    ? '检测到 File System Access API，可使用目录模式打开并保存 markdown 文件。'
-    : '当前浏览器不支持 File System Access API，已自动回退到 localStorage 模式。'
-
-  const restored = await localAdapter.loadInitialMarkdown()
-  if (restored) {
-    markdown.value = restored
-    operationMessage.value = '已从 localStorage 恢复上次草稿。'
+const normalizeGraphData = (input: any): GraphData => {
+  if (!input || typeof input !== 'object') {
+    return { nodes: [], edges: [] }
   }
 
-  hydrated = true
-})
-
-watch(markdown, (nextValue) => {
-  if (!hydrated) {
-    return
+  if (Array.isArray(input.fileList) && input.fileList.length > 0) {
+    const graphRawData = input.fileList[0]?.graphRawData
+    if (graphRawData && typeof graphRawData === 'object') {
+      return {
+        nodes: Array.isArray(graphRawData.nodes) ? graphRawData.nodes : [],
+        edges: Array.isArray(graphRawData.edges) ? graphRawData.edges : []
+      }
+    }
   }
 
-  if (autosaveTimer) {
-    clearTimeout(autosaveTimer)
+  return {
+    nodes: Array.isArray(input.nodes) ? input.nodes : [],
+    edges: Array.isArray(input.edges) ? input.edges : []
+  }
+}
+
+const parseFlowBlock = (raw: string): { data: GraphData; error: string } => {
+  if (!raw.trim()) {
+    return { data: EMPTY_GRAPH_DATA, error: '' }
   }
 
-  autosaveTimer = setTimeout(async () => {
-    await localAdapter.saveMarkdown(nextValue)
-    autosaveLabel.value = `localStorage 已保存 ${new Date().toLocaleTimeString('zh-CN')}`
-  }, 500)
-})
+  try {
+    return { data: normalizeGraphData(JSON.parse(raw)), error: '' }
+  } catch {
+    return {
+      data: EMPTY_GRAPH_DATA,
+      error: '流程块 JSON 解析失败，仍可点击后在编辑器中重建并覆盖。'
+    }
+  }
+}
+
+const parsePreviewSegments = (source: string): PreviewSegment[] => {
+  const segments: PreviewSegment[] = []
+  const regex = new RegExp(FLOW_BLOCK_REGEX)
+  let lastIndex = 0
+  let blockIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(source)) !== null) {
+    const start = match.index
+    const end = regex.lastIndex
+    const raw = (match[1] || '').trim()
+    const parsed = parseFlowBlock(raw)
+
+    if (start > lastIndex) {
+      const markdownContent = source.slice(lastIndex, start)
+      segments.push({
+        type: 'markdown',
+        key: `md-${segments.length}`,
+        content: markdownContent,
+        html: markdownRenderer.render(markdownContent)
+      })
+    }
+
+    segments.push({
+      type: 'flow',
+      key: `flow-${blockIndex}`,
+      blockIndex,
+      graphData: parsed.data,
+      raw,
+      error: parsed.error
+    })
+
+    blockIndex += 1
+    lastIndex = end
+  }
+
+  if (lastIndex < source.length) {
+    const markdownContent = source.slice(lastIndex)
+    segments.push({
+      type: 'markdown',
+      key: `md-${segments.length}`,
+      content: markdownContent,
+      html: markdownRenderer.render(markdownContent)
+    })
+  }
+
+  if (segments.length === 0) {
+    segments.push({
+      type: 'markdown',
+      key: 'md-empty',
+      content: source,
+      html: markdownRenderer.render(source)
+    })
+  }
+
+  return segments
+}
+
+const previewSegments = computed(() => parsePreviewSegments(markdown.value))
+
+const replaceFlowBlock = (source: string, targetIndex: number, replacement: string): string => {
+  const regex = new RegExp(FLOW_BLOCK_REGEX)
+  let blockIndex = 0
+  const output = source.replace(regex, (fullMatch) => {
+    if (blockIndex === targetIndex) {
+      blockIndex += 1
+      return replacement
+    }
+    blockIndex += 1
+    return fullMatch
+  })
+  return output
+}
 
 const clearMessages = () => {
   operationMessage.value = ''
@@ -90,6 +211,58 @@ const withErrorHandling = async (task: () => Promise<void>) => {
     }
     operationError.value = error?.message || '操作失败，请重试。'
   }
+}
+
+const ensureEditor = (): MilkdownEditorHandle | null => {
+  if (!milkdownRef.value) {
+    operationError.value = '编辑器尚未准备完成，请稍后重试。'
+    return null
+  }
+  return milkdownRef.value
+}
+
+const runEditorAction = (action: (editor: MilkdownEditorHandle) => void) => {
+  clearMessages()
+  const editor = ensureEditor()
+  if (!editor) {
+    return
+  }
+  action(editor)
+}
+
+const insertFlowBlock = () => {
+  runEditorAction((editor) => {
+    editor.insertFlowBlock()
+    operationMessage.value = '已插入流程块。可在右侧预览点击流程块打开 yys-editor。'
+  })
+}
+
+const openFlowBlockEditor = (segment: FlowSegment) => {
+  clearMessages()
+  editingBlockIndex.value = segment.blockIndex
+  editingGraphData.value = JSON.parse(JSON.stringify(segment.graphData))
+  if (segment.error) {
+    operationMessage.value = `${segment.error} 打开后可重新编辑并保存。`
+  }
+  flowEditorVisible.value = true
+}
+
+const closeFlowBlockEditor = () => {
+  flowEditorVisible.value = false
+  editingBlockIndex.value = null
+}
+
+const applyFlowBlockChanges = () => {
+  if (editingBlockIndex.value === null) {
+    return
+  }
+
+  const graphData = flowEditorRef.value?.getGraphData?.()
+  const normalizedGraphData = normalizeGraphData(graphData)
+  const serialized = `\`\`\`yys-flow\n${JSON.stringify(normalizedGraphData, null, 2)}\n\`\`\``
+  markdown.value = replaceFlowBlock(markdown.value, editingBlockIndex.value, serialized)
+  flowEditorVisible.value = false
+  operationMessage.value = `流程块 #${editingBlockIndex.value + 1} 已更新。`
 }
 
 const chooseDirectory = async () => {
@@ -151,10 +324,6 @@ const triggerImport = () => {
   importInput.value?.click()
 }
 
-const readFileText = async (file: File): Promise<string> => {
-  return await file.text()
-}
-
 const parseImportedContent = (name: string, text: string): string => {
   if (name.toLowerCase().endsWith('.json')) {
     const parsed = JSON.parse(text) as Record<string, unknown>
@@ -179,7 +348,7 @@ const handleImport = async (event: Event) => {
 
   importing.value = true
   await withErrorHandling(async () => {
-    const text = await readFileText(file)
+    const text = await file.text()
     markdown.value = parseImportedContent(file.name, text)
     operationMessage.value = `已导入 ${file.name}。`
     activeMode.value = 'local-storage'
@@ -213,6 +382,36 @@ const exportJson = () => {
   downloadBlob(blob, 'wiki-editor.json')
   operationMessage.value = '已导出 JSON 文件。'
 }
+
+onMounted(async () => {
+  isFsSupported.value = fileSystemAdapter.isSupported()
+  capabilityMessage.value = isFsSupported.value
+    ? '检测到 File System Access API，可使用目录模式打开并保存 markdown 文件。'
+    : '当前浏览器不支持 File System Access API，已自动回退到 localStorage 模式。'
+
+  const restored = await localAdapter.loadInitialMarkdown()
+  if (restored) {
+    markdown.value = restored
+    operationMessage.value = '已从 localStorage 恢复上次草稿。'
+  }
+
+  hydrated = true
+})
+
+watch(markdown, (nextValue) => {
+  if (!hydrated) {
+    return
+  }
+
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer)
+  }
+
+  autosaveTimer = setTimeout(async () => {
+    await localAdapter.saveMarkdown(nextValue)
+    autosaveLabel.value = `localStorage 已保存 ${new Date().toLocaleTimeString('zh-CN')}`
+  }, 500)
+})
 </script>
 
 <template>
@@ -233,6 +432,19 @@ const exportJson = () => {
           <span class="mode">当前模式：{{ activeMode }}</span>
           <span class="autosave">{{ autosaveLabel }}</span>
         </div>
+      </div>
+
+      <div class="editor-tools">
+        <button type="button" @click="runEditorAction((editor) => editor.toggleBold())"><strong>B</strong></button>
+        <button type="button" @click="runEditorAction((editor) => editor.toggleItalic())"><em>I</em></button>
+        <button type="button" @click="runEditorAction((editor) => editor.setHeading(2))">H2</button>
+        <button type="button" @click="runEditorAction((editor) => editor.setHeading(3))">H3</button>
+        <button type="button" @click="runEditorAction((editor) => editor.setBulletList())">无序列表</button>
+        <button type="button" @click="runEditorAction((editor) => editor.setOrderedList())">有序列表</button>
+        <button type="button" @click="runEditorAction((editor) => editor.setCodeBlock())">代码块</button>
+        <button type="button" @click="runEditorAction((editor) => editor.undo())">撤销</button>
+        <button type="button" @click="runEditorAction((editor) => editor.redo())">重做</button>
+        <button type="button" class="primary" @click="insertFlowBlock">插入流程块</button>
       </div>
 
       <div class="capability">
@@ -259,8 +471,65 @@ const exportJson = () => {
       <p v-if="operationMessage" class="message">{{ operationMessage }}</p>
       <p v-if="operationError" class="error">{{ operationError }}</p>
 
-      <MilkdownEditor v-model="markdown" />
+      <div class="workspace">
+        <section class="workspace-pane">
+          <h2>Markdown 编辑</h2>
+          <MilkdownEditor ref="milkdownRef" v-model="markdown" />
+        </section>
+
+        <section class="workspace-pane preview-pane">
+          <h2>渲染预览（点击流程块可编辑）</h2>
+          <div class="preview-content">
+            <template v-for="segment in previewSegments" :key="segment.key">
+              <div v-if="segment.type === 'markdown'" class="markdown-block" v-html="segment.html" />
+
+              <article v-else class="flow-block" @click="openFlowBlockEditor(segment)">
+                <header class="flow-block-header">
+                  <span>流程块 #{{ segment.blockIndex + 1 }}</span>
+                  <button type="button" @click.stop="openFlowBlockEditor(segment)">编辑</button>
+                </header>
+
+                <p v-if="segment.error" class="flow-error">{{ segment.error }}</p>
+                <ClientOnly>
+                  <YysEditorPreview
+                    mode="preview"
+                    capability="render-only"
+                    :data="segment.graphData"
+                    :height="280"
+                    :show-mini-map="false"
+                  />
+                  <template #fallback>
+                    <div class="flow-fallback">流程图加载中...</div>
+                  </template>
+                </ClientOnly>
+                <p class="flow-tip">点击块可打开 yys-editor 进行可视化编辑并回写 markdown。</p>
+              </article>
+            </template>
+          </div>
+        </section>
+      </div>
     </section>
+
+    <div v-if="flowEditorVisible" class="flow-modal-mask" @click.self="closeFlowBlockEditor">
+      <section class="flow-modal">
+        <header class="flow-modal-header">
+          <h3>编辑流程块 #{{ (editingBlockIndex ?? 0) + 1 }}</h3>
+          <div class="flow-modal-actions">
+            <button type="button" @click="closeFlowBlockEditor">取消</button>
+            <button type="button" class="primary" @click="applyFlowBlockChanges">应用到块</button>
+          </div>
+        </header>
+        <ClientOnly>
+          <YysEditorPreview
+            ref="flowEditorRef"
+            mode="edit"
+            capability="interactive"
+            :data="editingGraphData"
+            :height="620"
+          />
+        </ClientOnly>
+      </section>
+    </div>
 
     <input
       ref="importInput"
@@ -280,7 +549,7 @@ const exportJson = () => {
 }
 
 .panel {
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
   background: #fff;
   border: 1px solid #d8dde8;
@@ -299,7 +568,8 @@ const exportJson = () => {
   color: #4a5568;
 }
 
-.toolbar {
+.toolbar,
+.editor-tools {
   margin-top: 16px;
   padding: 12px;
   border: 1px solid #d8dde8;
@@ -309,6 +579,10 @@ const exportJson = () => {
   gap: 12px;
   flex-wrap: wrap;
   background: #f8fafc;
+}
+
+.editor-tools {
+  justify-content: flex-start;
 }
 
 .left,
@@ -336,6 +610,12 @@ input {
 
 button {
   cursor: pointer;
+}
+
+button.primary {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
 }
 
 button:disabled {
@@ -372,8 +652,123 @@ button:disabled {
   margin-top: 10px;
 }
 
+.workspace {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.workspace-pane h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+}
+
+.preview-pane {
+  border: 1px solid #d8dde8;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fbfdff;
+}
+
+.preview-content {
+  max-height: 760px;
+  overflow: auto;
+}
+
+.markdown-block :deep(*) {
+  max-width: 100%;
+}
+
+.flow-block {
+  margin: 14px 0;
+  border: 1px solid #d7deed;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.flow-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.flow-block-header button {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.flow-tip {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.flow-error {
+  margin: 4px 0 8px;
+  color: #b42318;
+  font-size: 13px;
+}
+
+.flow-fallback {
+  border: 1px dashed #c4cddc;
+  border-radius: 8px;
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+}
+
+.flow-modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.52);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 2000;
+}
+
+.flow-modal {
+  width: min(1320px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #c7d2fe;
+}
+
+.flow-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid #dbe3f2;
+  background: #f8fafc;
+}
+
+.flow-modal-header h3 {
+  margin: 0;
+}
+
+.flow-modal-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .hidden-input {
   display: none;
+}
+
+@media (max-width: 960px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {

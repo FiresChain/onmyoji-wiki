@@ -2,6 +2,20 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import '@milkdown/theme-nord/style.css'
 
+export type MilkdownEditorHandle = {
+  toggleBold: () => void
+  toggleItalic: () => void
+  setHeading: (level: number) => void
+  setBulletList: () => void
+  setOrderedList: () => void
+  setCodeBlock: () => void
+  undo: () => void
+  redo: () => void
+  insertFlowBlock: () => void
+  insertText: (text: string, inline?: boolean) => void
+  getMarkdown: () => string
+}
+
 const props = defineProps<{
   modelValue: string
 }>()
@@ -17,8 +31,11 @@ const bootError = ref('')
 let editor: any = null
 let getMarkdown: (() => string) | null = null
 let replaceAll: ((markdown: string) => any) | null = null
+let insertMarkdown: ((markdown: string, inline?: boolean) => any) | null = null
+let callCommand: ((slice: any, payload?: any) => any) | null = null
 let internalPatch = false
 let lastMarkdownFromEditor: string | null = null
+const commandKeys: Record<string, any> = {}
 
 const normalizeMarkdown = (value: string): string => value.replace(/\r\n/g, '\n')
 
@@ -31,9 +48,17 @@ onMounted(async () => {
 
     const [
       { Editor, rootCtx, defaultValueCtx },
-      { commonmark },
+      {
+        commonmark,
+        toggleStrongCommand,
+        toggleEmphasisCommand,
+        wrapInHeadingCommand,
+        wrapInBulletListCommand,
+        wrapInOrderedListCommand,
+        createCodeBlockCommand
+      },
       { listener, listenerCtx },
-      { history },
+      { history, undoCommand, redoCommand },
       { nord },
       utils
     ] = await Promise.all([
@@ -47,6 +72,16 @@ onMounted(async () => {
 
     getMarkdown = () => editor.action(utils.getMarkdown())
     replaceAll = (markdown: string) => editor.action(utils.replaceAll(markdown))
+    insertMarkdown = (markdown: string, inline = false) => editor.action(utils.insert(markdown, inline))
+    callCommand = utils.callCommand
+    commandKeys.bold = toggleStrongCommand.key
+    commandKeys.italic = toggleEmphasisCommand.key
+    commandKeys.heading = wrapInHeadingCommand.key
+    commandKeys.bulletList = wrapInBulletListCommand.key
+    commandKeys.orderedList = wrapInOrderedListCommand.key
+    commandKeys.codeBlock = createCodeBlockCommand.key
+    commandKeys.undo = undoCommand.key
+    commandKeys.redo = redoCommand.key
 
     editor = await Editor.make()
       .config(nord)
@@ -103,6 +138,45 @@ watch(() => props.modelValue, (nextValue) => {
 
 onBeforeUnmount(() => {
   editor?.destroy?.()
+})
+
+const executeCommand = (commandKey: any, payload?: unknown) => {
+  if (!editor || !callCommand || !commandKey) {
+    return
+  }
+  editor.action(callCommand(commandKey, payload))
+}
+
+const insertText = (text: string, inline = false) => {
+  if (!editor || !insertMarkdown) {
+    return
+  }
+  insertMarkdown(text, inline)
+}
+
+const insertFlowBlock = () => {
+  insertText('\n```yys-flow\n{\n  "nodes": [],\n  "edges": []\n}\n```\n')
+}
+
+const getMarkdownContent = (): string => {
+  if (!getMarkdown) {
+    return ''
+  }
+  return normalizeMarkdown(getMarkdown())
+}
+
+defineExpose<MilkdownEditorHandle>({
+  toggleBold: () => executeCommand(commandKeys.bold),
+  toggleItalic: () => executeCommand(commandKeys.italic),
+  setHeading: (level: number) => executeCommand(commandKeys.heading, level),
+  setBulletList: () => executeCommand(commandKeys.bulletList),
+  setOrderedList: () => executeCommand(commandKeys.orderedList),
+  setCodeBlock: () => executeCommand(commandKeys.codeBlock),
+  undo: () => executeCommand(commandKeys.undo),
+  redo: () => executeCommand(commandKeys.redo),
+  insertFlowBlock,
+  insertText,
+  getMarkdown: getMarkdownContent
 })
 </script>
 
