@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue'
 import MarkdownIt from 'markdown-it'
 import MilkdownEditor, { type MilkdownEditorHandle } from '~/components/editor/MilkdownEditor.client.vue'
 import { YysEditorPreview } from 'yys-editor'
@@ -73,6 +73,39 @@ const milkdownRef = ref<MilkdownEditorHandle | null>(null)
 const importInput = ref<HTMLInputElement | null>(null)
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
 let hydrated = false
+
+const lockBodyScroll = () => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  const body = document.body
+  const scrollbarWidth = Math.max(0, window.innerWidth - document.documentElement.clientWidth)
+  body.style.overflow = 'hidden'
+  body.style.paddingRight = scrollbarWidth > 0 ? `${scrollbarWidth}px` : ''
+}
+
+const unlockBodyScroll = () => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  const body = document.body
+  body.style.overflow = ''
+  body.style.paddingRight = ''
+}
+
+const triggerFlowEditorResize = () => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  nextTick(() => {
+    flowEditorRef.value?.resizeCanvas?.()
+    window.dispatchEvent(new Event('resize'))
+    setTimeout(() => {
+      flowEditorRef.value?.resizeCanvas?.()
+      window.dispatchEvent(new Event('resize'))
+    }, 120)
+  })
+}
 
 const canOpenFile = computed(() => (
   isFsSupported.value && fileSystemAdapter.hasDirectory() && selectedFile.value.trim().length > 0
@@ -412,6 +445,22 @@ watch(markdown, (nextValue) => {
     autosaveLabel.value = `localStorage 已保存 ${new Date().toLocaleTimeString('zh-CN')}`
   }, 500)
 })
+
+watch(flowEditorVisible, (visible) => {
+  if (visible) {
+    lockBodyScroll()
+    triggerFlowEditorResize()
+    return
+  }
+  unlockBodyScroll()
+})
+
+onBeforeUnmount(() => {
+  unlockBodyScroll()
+  if (autosaveTimer) {
+    clearTimeout(autosaveTimer)
+  }
+})
 </script>
 
 <template>
@@ -519,15 +568,18 @@ watch(markdown, (nextValue) => {
             <button type="button" class="primary" @click="applyFlowBlockChanges">应用到块</button>
           </div>
         </header>
-        <ClientOnly>
-          <YysEditorPreview
-            ref="flowEditorRef"
-            mode="edit"
-            capability="interactive"
-            :data="editingGraphData"
-            :height="620"
-          />
-        </ClientOnly>
+        <div class="flow-modal-body">
+          <ClientOnly>
+            <YysEditorPreview
+              ref="flowEditorRef"
+              class="flow-modal-editor"
+              mode="edit"
+              capability="interactive"
+              :data="editingGraphData"
+              height="100%"
+            />
+          </ClientOnly>
+        </div>
       </section>
     </div>
 
@@ -736,10 +788,14 @@ button:disabled {
 
 .flow-modal {
   width: min(1320px, 100%);
+  height: min(92vh, 900px);
+  max-height: calc(100vh - 32px);
   background: #fff;
   border-radius: 12px;
   overflow: hidden;
   border: 1px solid #c7d2fe;
+  display: flex;
+  flex-direction: column;
 }
 
 .flow-modal-header {
@@ -750,6 +806,17 @@ button:disabled {
   padding: 12px;
   border-bottom: 1px solid #dbe3f2;
   background: #f8fafc;
+}
+
+.flow-modal-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.flow-modal-editor {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .flow-modal-header h3 {
@@ -769,6 +836,16 @@ button:disabled {
   .workspace {
     grid-template-columns: 1fr;
   }
+
+  .flow-modal-mask {
+    padding: 10px;
+  }
+
+  .flow-modal {
+    width: 100%;
+    height: calc(100vh - 20px);
+    max-height: calc(100vh - 20px);
+  }
 }
 
 @media (max-width: 720px) {
@@ -778,6 +855,16 @@ button:disabled {
 
   .panel-header h1 {
     font-size: 24px;
+  }
+
+  .flow-modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .flow-modal-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 </style>
