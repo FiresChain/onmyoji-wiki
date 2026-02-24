@@ -782,16 +782,17 @@ button:disabled {
   background: rgba(15, 23, 42, 0.52);
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: 8px;
   z-index: 2000;
 }
 
 .flow-modal {
-  width: min(1320px, 100%);
-  height: min(92vh, 900px);
-  max-height: calc(100vh - 32px);
+  width: calc(100vw - 16px);
+  height: calc(100vh - 16px);
+  max-width: none;
+  max-height: none;
   background: #fff;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   border: 1px solid #c7d2fe;
   display: flex;
@@ -838,13 +839,12 @@ button:disabled {
   }
 
   .flow-modal-mask {
-    padding: 10px;
+    padding: 4px;
   }
 
   .flow-modal {
-    width: 100%;
-    height: calc(100vh - 20px);
-    max-height: calc(100vh - 20px);
+    width: calc(100vw - 8px);
+    height: calc(100vh - 8px);
   }
 }
 
