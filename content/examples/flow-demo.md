@@ -7,6 +7,11 @@
 ::flow-preview{src="/data/flows/test-flow.json" :height="500"}
 ::
 
+## 预览数据集成测试
+
+::flow-preview{src="/data/flows/wiki-preview-sample.json" :height="760"}
+::
+
 ## 说明
 
 上面的流程图展示了：

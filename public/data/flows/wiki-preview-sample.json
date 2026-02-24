@@ -1,0 +1,420 @@
+﻿{
+  "schemaVersion": 1,
+  "fileList": [
+    {
+      "id": "f_mm0mrmeq82wi41",
+      "label": "File 1",
+      "name": "File 1",
+      "visible": true,
+      "type": "FLOW",
+      "graphRawData": {
+        "nodes": [
+          {
+            "id": "07585ea0-4ce3-450e-b152-e757f060a897",
+            "type": "textNode",
+            "x": 184,
+            "y": 326,
+            "properties": {
+              "text": {
+                "content": "<p>请输入文本</p>",
+                "rich": true
+              },
+              "width": 200,
+              "height": 120,
+              "style": {
+                "width": 200,
+                "height": 120,
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "transparent",
+                  "blur": 0,
+                  "offsetX": 0,
+                  "offsetY": 0
+                }
+              },
+              "_label": [],
+              "meta": {
+                "visible": true,
+                "locked": false
+              }
+            },
+            "zIndex": 1000
+          },
+          {
+            "id": "c6870dc2-7122-49a9-b422-fb16182fb5cc",
+            "type": "vectorNode",
+            "x": 476,
+            "y": 299,
+            "properties": {
+              "vector": {
+                "kind": "rect",
+                "tileWidth": 50,
+                "tileHeight": 50,
+                "fill": "#409EFF",
+                "stroke": "#303133",
+                "strokeWidth": 1
+              },
+              "width": 200,
+              "height": 200,
+              "_label": [],
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 200,
+                "height": 200,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              }
+            },
+            "zIndex": 1000
+          },
+          {
+            "id": "33338457-a10c-4021-bc2f-84ff4374f10b",
+            "type": "assetSelector",
+            "x": 126,
+            "y": 488,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "avatar": "/assets/Shikigami/sp/598.png",
+                "name": "灼华桃花妖",
+                "rarity": "SP"
+              },
+              "_label": [],
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 100,
+                "height": 80,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "width": 100,
+              "height": 80
+            },
+            "zIndex": 1000
+          },
+          {
+            "id": "51ef4dc1-9199-4ef9-a86e-2912efb6994d",
+            "type": "assetSelector",
+            "x": 299,
+            "y": 488,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "avatar": "/assets/Shikigami/sp/590.png",
+                "name": "妙主九命猫",
+                "rarity": "SP"
+              },
+              "_label": [],
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 100,
+                "height": 80,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "width": 100,
+              "height": 80
+            },
+            "zIndex": 1000
+          },
+          {
+            "id": "e9d0dea8-6ab3-457b-a782-ae72f17be677",
+            "type": "assetSelector",
+            "x": 169,
+            "y": 536,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "name": "贝吹坊",
+                "shortName": "贝",
+                "type": "attack",
+                "avatar": "/assets/Yuhun/贝吹坊.png"
+              },
+              "_label": [],
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 100,
+                "height": 80,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "width": 100,
+              "height": 80
+            },
+            "zIndex": 1000
+          },
+          {
+            "id": "d19984ef-640a-4e5a-ae47-f6aa6a0c09ce",
+            "type": "assetSelector",
+            "x": 351,
+            "y": 546,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "name": "狰",
+                "shortName": "狰",
+                "type": "attack",
+                "avatar": "/assets/Yuhun/狰.png"
+              },
+              "_label": [],
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 100,
+                "height": 80,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "width": 100,
+              "height": 80
+            },
+            "zIndex": 1000
+          },
+          {
+            "id": "cf3a24eb-c4ad-4163-9618-0dc0677532ad",
+            "type": "assetSelector",
+            "x": -18,
+            "y": 508,
+            "properties": {
+              "assetLibrary": "onmyoji",
+              "selectedAsset": {
+                "id": "13",
+                "name": "源博雅",
+                "avatar": "/assets/downloaded_images/hero_13_13.png"
+              },
+              "_label": [],
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 100,
+                "height": 80,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "width": 100,
+              "height": 80
+            },
+            "zIndex": 1000
+          },
+          {
+            "id": "4f05d1e2-4d7a-4067-add3-0a0d6a54a56e",
+            "type": "assetSelector",
+            "x": 8,
+            "y": 588,
+            "properties": {
+              "assetLibrary": "onmyojiSkill",
+              "selectedAsset": {
+                "onmyojiId": "13",
+                "onmyojiName": "源博雅",
+                "skillId": "1301",
+                "name": "技能1",
+                "avatar": "/assets/downloaded_images/hero_13_skill_1301.png"
+              },
+              "_label": [],
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 100,
+                "height": 80,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "width": 100,
+              "height": 80
+            },
+            "zIndex": 1000
+          },
+          {
+            "id": "a06462ab-c5d8-44f9-888b-ce646561e4aa",
+            "type": "assetSelector",
+            "x": -97,
+            "y": 593,
+            "properties": {
+              "assetLibrary": "onmyojiSkill",
+              "selectedAsset": {
+                "onmyojiId": "13",
+                "onmyojiName": "源博雅",
+                "skillId": "1304",
+                "name": "技能4",
+                "avatar": "/assets/downloaded_images/hero_13_skill_1304.png"
+              },
+              "_label": [],
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 100,
+                "height": 80,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "width": 100,
+              "height": 80
+            },
+            "zIndex": 1000
+          },
+          {
+            "id": "18161961-cb30-40d8-bb33-b4747899ad9f",
+            "type": "rect",
+            "x": -39,
+            "y": 283,
+            "properties": {
+              "width": 150,
+              "height": 150,
+              "style": {
+                "width": 150,
+                "height": 150,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "background": "#fff",
+                "border": "2px solid black"
+              },
+              "_label": [],
+              "meta": {
+                "visible": true,
+                "locked": false
+              }
+            },
+            "zIndex": 1000
+          },
+          {
+            "id": "951b4522-69cb-436e-8ec6-bfb1d373e7bb",
+            "type": "imageNode",
+            "x": 278,
+            "y": 301,
+            "properties": {
+              "url": "",
+              "width": 180,
+              "height": 120,
+              "_label": []
+            },
+            "zIndex": 1000
+          }
+        ],
+        "edges": []
+      },
+      "transform": {
+        "SCALE_X": 1,
+        "SCALE_Y": 1,
+        "TRANSLATE_X": 419,
+        "TRANSLATE_Y": 33
+      }
+    }
+  ],
+  "activeFileId": "f_mm0mrmeq82wi41",
+  "activeFile": "File 1"
+}
