@@ -23,15 +23,11 @@ const props = withDefaults(defineProps<{
   showMiniMap: false
 })
 
-const route = useRoute()
 const flowData = ref<GraphData>({ nodes: [], edges: [] })
 const loading = ref(false)
 const errorMessage = ref('')
 const resolvedCapability = computed<FlowCapabilityLevel>(() => {
-  if (props.capability) {
-    return props.capability
-  }
-  return route.path.startsWith('/admin') ? 'interactive' : 'render-only'
+  return props.capability || 'render-only'
 })
 
 const normalizeData = (input: any): GraphData => {

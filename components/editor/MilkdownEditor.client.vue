@@ -1,0 +1,122 @@
+<script setup lang="ts">
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import '@milkdown/theme-nord/style.css'
+
+const props = defineProps<{
+  modelValue: string
+}>()
+
+const emit = defineEmits<{
+  (event: 'update:modelValue', value: string): void
+}>()
+
+const root = ref<HTMLDivElement | null>(null)
+const booting = ref(true)
+const bootError = ref('')
+
+let editor: any = null
+let getMarkdown: (() => string) | null = null
+let replaceAll: ((markdown: string) => any) | null = null
+let internalPatch = false
+
+onMounted(async () => {
+  try {
+    const [
+      { Editor, rootCtx, defaultValueCtx },
+      { commonmark },
+      { listener, listenerCtx },
+      { history },
+      { nord },
+      utils
+    ] = await Promise.all([
+      import('@milkdown/kit/core'),
+      import('@milkdown/kit/preset/commonmark'),
+      import('@milkdown/kit/plugin/listener'),
+      import('@milkdown/kit/plugin/history'),
+      import('@milkdown/theme-nord'),
+      import('@milkdown/kit/utils')
+    ])
+
+    getMarkdown = () => editor.action(utils.getMarkdown())
+    replaceAll = (markdown: string) => editor.action(utils.replaceAll(markdown))
+
+    editor = await Editor.make()
+      .config(nord)
+      .config((ctx) => {
+        ctx.set(rootCtx, root.value)
+        ctx.set(defaultValueCtx, props.modelValue)
+      })
+      .config((ctx) => {
+        const manager = ctx.get(listenerCtx)
+        manager.markdownUpdated((_ctx, markdown: string, prevMarkdown: string) => {
+          if (markdown === prevMarkdown || internalPatch) {
+            return
+          }
+          emit('update:modelValue', markdown)
+        })
+      })
+      .use(commonmark)
+      .use(listener)
+      .use(history)
+      .create()
+  } catch (error) {
+    console.error('Milkdown init failed:', error)
+    bootError.value = 'Milkdown 初始化失败，请刷新页面重试。'
+  } finally {
+    booting.value = false
+  }
+})
+
+watch(() => props.modelValue, (nextValue) => {
+  if (!editor || !getMarkdown || !replaceAll) {
+    return
+  }
+
+  const currentValue = getMarkdown()
+  if (currentValue === nextValue) {
+    return
+  }
+
+  internalPatch = true
+  replaceAll(nextValue)
+  internalPatch = false
+})
+
+onBeforeUnmount(() => {
+  editor?.destroy?.()
+})
+</script>
+
+<template>
+  <div class="milkdown-editor">
+    <div v-if="booting" class="booting">编辑器加载中...</div>
+    <div v-else-if="bootError" class="error">{{ bootError }}</div>
+    <div v-else ref="root" class="milkdown-root" />
+  </div>
+</template>
+
+<style scoped>
+.milkdown-editor {
+  border: 1px solid #d7d7d7;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.milkdown-root {
+  min-height: 520px;
+  padding: 12px;
+}
+
+.booting,
+.error {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  color: #666;
+}
+
+.error {
+  color: #b42318;
+}
+</style>

@@ -14,6 +14,8 @@
     "@logicflow/core": "^2.0.16",
     "@logicflow/extension": "^2.0.21",
     "@logicflow/vue-node-registry": "^1.0.18",
+    "@milkdown/kit": "^7.18.0",
+    "@milkdown/theme-nord": "^7.18.0",
     "@nuxt/content": "^3.10.0",
     "better-sqlite3": "^12.6.2",
     "nuxt": "^3.13.0",
