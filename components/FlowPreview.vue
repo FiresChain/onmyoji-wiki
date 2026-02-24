@@ -8,11 +8,14 @@ type GraphData = {
   edges: any[]
 }
 
+type FlowCapabilityLevel = 'render-only' | 'interactive'
+
 const props = withDefaults(defineProps<{
   data?: Record<string, any> | null
   src?: string
   height?: number | string
   showMiniMap?: boolean
+  capability?: FlowCapabilityLevel
 }>(), {
   data: () => ({ nodes: [], edges: [] }),
   src: '',
@@ -20,9 +23,16 @@ const props = withDefaults(defineProps<{
   showMiniMap: false
 })
 
+const route = useRoute()
 const flowData = ref<GraphData>({ nodes: [], edges: [] })
 const loading = ref(false)
 const errorMessage = ref('')
+const resolvedCapability = computed<FlowCapabilityLevel>(() => {
+  if (props.capability) {
+    return props.capability
+  }
+  return route.path.startsWith('/admin') ? 'interactive' : 'render-only'
+})
 
 const normalizeData = (input: any): GraphData => {
   if (!input || typeof input !== 'object') {
@@ -116,6 +126,7 @@ const exportData = () => {
         v-else
         ref="previewRef"
         mode="preview"
+        :capability="resolvedCapability"
         :data="flowData"
         :height="height"
         :show-mini-map="showMiniMap"
