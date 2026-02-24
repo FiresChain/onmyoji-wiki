@@ -2,8 +2,6 @@
 
 这是一个使用 yys-editor 预览组件的示例。
 
-真的吗
-
 ## 式神阵容流程图
 
 ::flow-preview{src="/data/flows/test-flow.json" :height="500"}
@@ -16,5 +14,3 @@
 - 蝠翼御魂配置
 
 你可以通过修改 JSON 数据来更新流程图内容。
-
-你直接搜这句花得了

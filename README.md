@@ -1,155 +1,111 @@
 # Onmyoji Wiki
 
-基于 Nuxt Content 的阴阳师 Wiki，集成了 yys-editor 流程图预览功能。
+基于 Nuxt Content(MDC) 的阴阳师 Wiki，集成 `yys-editor` 流程图预览能力。
 
-## 功能特性
+## 当前状态
 
-- ✅ Markdown 文档管理
-- ✅ 流程图预览（基于 yys-editor）
-- ✅ 支持自定义节点（imageNode, textNode, vectorNode 等）
-- ✅ 只读模式，支持查看、缩放、导出
-- ✅ 支持内联数据和外部 JSON 文件
+- 已支持 Markdown 内容渲染（`ContentRenderer`）
+- 已支持 MDC 组件 `::flow-preview` 展示流程图
+- 支持两种数据输入：
+  - 内联 `data`
+  - 外部 `src` JSON
+
+## 技术栈
+
+- Nuxt 3
+- @nuxt/content 3
+- Vue 3
+- yys-editor 1.x
 
 ## 快速开始
 
-### 安装依赖
-
 ```bash
 npm install
-```
-
-### 启动开发服务器
-
-```bash
 npm run dev
 ```
 
-访问 http://localhost:3000 (如果端口被占用，会自动使用其他端口)
+默认访问 `http://localhost:3000`（端口占用时会自动切换）。
 
-### 构建生产版本
+## 构建与预览
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## 使用流程图预览
+## 内容与路由
 
-### 方式一：内联数据
+- 主页内容：`content/index.md`
+- 其他页面：`content/**/*.md`
+- 动态渲染入口：`pages/[...slug].vue`
 
-在 Markdown 文件中使用 MDC 语法：
+例如：`content/examples/flow-demo.md` 对应路由 `/examples/flow-demo`。
 
-```markdown
+## FlowPreview 用法
+
+### 1. 内联数据
+
+```md
 ::flow-preview
 ---
 data:
   nodes:
     - id: start
       type: circle
-      x: 100
+      x: 120
       y: 100
       text: { value: "开始" }
     - id: end
       type: circle
-      x: 300
+      x: 320
       y: 100
       text: { value: "结束" }
   edges:
     - sourceNodeId: start
       targetNodeId: end
       type: polyline
-height: 300
+height: 320
 ---
 ::
 ```
 
-### 方式二：外部 JSON 文件
+### 2. 外部 JSON
 
-```markdown
-::flow-preview{src="/data/flows/test-flow.json" height="500"}
+```md
+::flow-preview{src="/data/flows/test-flow.json" :height="500"}
 ::
 ```
 
-JSON 文件格式：
+## 目录结构
 
-```json
-{
-  "nodes": [
-    {
-      "id": "node1",
-      "type": "imageNode",
-      "x": 100,
-      "y": 100,
-      "properties": {
-        "imageUrl": "https://example.com/image.png",
-        "width": 100,
-        "height": 100
-      }
-    }
-  ],
-  "edges": [
-    {
-      "id": "edge1",
-      "type": "polyline",
-      "sourceNodeId": "node1",
-      "targetNodeId": "node2"
-    }
-  ]
-}
-```
-
-## 项目结构
-
-```
+```text
 onmyoji-wiki/
-├── app/
-│   ├── components/
-│   │   └── FlowPreview.vue          # 流程图预览组件
-│   ├── pages/
-│   │   ├── index.vue                 # 首页
-│   │   └── examples/
-│   │       └── flow-demo.vue         # 流程图示例页面
-│   └── app.vue                       # 应用入口
-├── content/
-│   ├── index.md                      # 首页内容（未使用）
-│   └── examples/
-│       └── flow-demo.md              # 示例文档（未使用）
-├── public/
-│   └── data/
-│       └── flows/
-│           └── test-flow.json        # 测试数据
-├── nuxt.config.ts                    # Nuxt 配置
-└── package.json
+├─ components/
+│  └─ FlowPreview.vue
+├─ content/
+│  ├─ index.md
+│  └─ examples/flow-demo.md
+├─ docs/
+│  ├─ 1management/
+│  ├─ 2design/
+│  ├─ 3build/
+│  ├─ 3usage/
+│  └─ 4test/
+├─ pages/
+│  ├─ index.vue
+│  └─ [...slug].vue
+├─ public/
+│  ├─ assets/
+│  └─ data/flows/
+├─ content.config.ts
+├─ nuxt.config.ts
+└─ app.vue
 ```
 
-**注意**: 当前版本直接使用 Vue 页面而不是 Nuxt Content 的 Markdown 渲染，因为遇到了 `queryContent` 导入问题。
+## 规划方向
 
-## 示例
+- 保持访客端为静态 Wiki（SEO 友好）
+- 在 `/admin` 路径集成 Milkdown 编辑器
+- 通过插件方式接入 yys-editor 进行图编辑
 
-访问以下页面查看效果：
-- 首页: http://localhost:3001 (端口可能不同)
-- 流程图示例: http://localhost:3001/examples/flow-demo
-
-**重要**: FlowPreview 组件使用 ClientOnly 包装，在服务端渲染时不会显示内容。请在浏览器中打开页面查看流程图效果。
-
-## 技术栈
-
-- Nuxt 4.3.1
-- Nuxt Content 3.11.2
-- yys-editor 1.0.4
-- Vue 3.5.28
-
-## 维护
-
-### 更新 yys-editor
-
-```bash
-npm update yys-editor
-```
-
-yys-editor 的新节点类型会自动支持，无需修改代码。
-
-## 参考
-
-- [Nuxt Content 文档](https://content.nuxt.com/)
-- [yys-editor 项目](../yys-editor/)
+详细计划见 `docs/1management/plan.md`。

@@ -1,57 +1,101 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { YysEditorPreview } from 'yys-editor'
 import 'yys-editor/style.css'
 
-const props = defineProps({
-  data: {
-    type: Object,
-    default: () => ({ nodes: [], edges: [] })
-  },
-  src: {
-    type: String,
-    default: ''
-  },
-  height: {
-    type: Number,
-    default: 400
-  },
-  showMiniMap: {
-    type: Boolean,
-    default: false
-  }
+type GraphData = {
+  nodes: any[]
+  edges: any[]
+}
+
+const props = withDefaults(defineProps<{
+  data?: Record<string, any> | null
+  src?: string
+  height?: number | string
+  showMiniMap?: boolean
+}>(), {
+  data: () => ({ nodes: [], edges: [] }),
+  src: '',
+  height: 400,
+  showMiniMap: false
 })
 
-const flowData = ref(props.data)
+const flowData = ref<GraphData>({ nodes: [], edges: [] })
 const loading = ref(false)
+const errorMessage = ref('')
 
-// 从外部加载数据
-onMounted(async () => {
-  if (props.src) {
-    loading.value = true
-    try {
-      const response = await fetch(props.src)
-      const data = await response.json()
+const normalizeData = (input: any): GraphData => {
+  if (!input || typeof input !== 'object') {
+    return { nodes: [], edges: [] }
+  }
 
-      // 如果是完整的编辑器数据格式，提取 graphRawData
-      if (data.fileList && data.fileList.length > 0) {
-        flowData.value = data.fileList[0].graphRawData
-      } else {
-        flowData.value = data
+  if (Array.isArray(input.fileList) && input.fileList.length > 0) {
+    const graphRawData = input.fileList[0]?.graphRawData
+    if (graphRawData && typeof graphRawData === 'object') {
+      return {
+        nodes: Array.isArray(graphRawData.nodes) ? graphRawData.nodes : [],
+        edges: Array.isArray(graphRawData.edges) ? graphRawData.edges : []
       }
-    } catch (error) {
-      console.error('Failed to load flow data:', error)
-    } finally {
-      loading.value = false
     }
   }
-})
+
+  return {
+    nodes: Array.isArray(input.nodes) ? input.nodes : [],
+    edges: Array.isArray(input.edges) ? input.edges : []
+  }
+}
+
+const applyData = (data: any) => {
+  flowData.value = normalizeData(data)
+}
+
+const loadFromSrc = async (src: string) => {
+  if (!src) {
+    errorMessage.value = ''
+    applyData(props.data)
+    return
+  }
+
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const response = await fetch(src)
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+    const payload = await response.json()
+    applyData(payload)
+  } catch (error) {
+    console.error('Failed to load flow data:', error)
+    errorMessage.value = '流程图加载失败，请检查数据地址或格式。'
+    applyData(props.data)
+  } finally {
+    loading.value = false
+  }
+}
+
+watch(() => props.src, (newSrc) => {
+  void loadFromSrc(newSrc)
+}, { immediate: true })
+
+watch(() => props.data, (newData) => {
+  if (!props.src) {
+    applyData(newData)
+  }
+}, { deep: true })
+
+const previewHeight = computed(() => (
+  typeof props.height === 'number' ? `${props.height}px` : props.height
+))
 
 // 导出数据
-const previewRef = ref()
+const previewRef = ref<any>()
 const exportData = () => {
   if (previewRef.value) {
     const data = previewRef.value.getGraphData()
+    if (!data) {
+      return
+    }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -67,6 +111,7 @@ const exportData = () => {
   <ClientOnly>
     <div class="flow-preview-wrapper">
       <div v-if="loading" class="loading">加载中...</div>
+      <div v-else-if="errorMessage" class="error">{{ errorMessage }}</div>
       <YysEditorPreview
         v-else
         ref="previewRef"
@@ -75,14 +120,14 @@ const exportData = () => {
         :height="height"
         :show-mini-map="showMiniMap"
       />
-      <div class="flow-actions">
+      <div v-if="!loading && !errorMessage" class="flow-actions">
         <button @click="exportData" class="export-btn">
-          📥 导出
+          导出
         </button>
       </div>
     </div>
     <template #fallback>
-      <div class="flow-preview-placeholder" :style="{ height: `${height}px` }">
+      <div class="flow-preview-placeholder" :style="{ height: previewHeight }">
         <p>加载流程图组件中...</p>
       </div>
     </template>
@@ -113,6 +158,12 @@ const exportData = () => {
   padding: 40px;
   text-align: center;
   color: #999;
+}
+
+.error {
+  padding: 40px;
+  text-align: center;
+  color: #c62828;
 }
 
 .flow-actions {
