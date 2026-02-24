@@ -34,11 +34,15 @@ let autosaveTimer: ReturnType<typeof setTimeout> | null = null
 let hydrated = false
 
 const canOpenFile = computed(() => (
-  isFsSupported.value && fileSystemAdapter.hasDirectory() && selectedFile.value.length > 0
+  isFsSupported.value && fileSystemAdapter.hasDirectory() && selectedFile.value.trim().length > 0
 ))
 
 const canSaveToFile = computed(() => (
   isFsSupported.value && fileSystemAdapter.hasDirectory() && !!fileSystemAdapter.getCurrentFileName()
+))
+
+const canRefreshFiles = computed(() => (
+  isFsSupported.value && fileSystemAdapter.hasDirectory()
 ))
 
 onMounted(async () => {
@@ -100,12 +104,30 @@ const chooseDirectory = async () => {
   })
 }
 
+const refreshDirectoryFiles = async () => {
+  if (!canRefreshFiles.value) {
+    return
+  }
+
+  await withErrorHandling(async () => {
+    const files = await fileSystemAdapter.listFiles()
+    markdownFiles.value = files
+    if (!selectedFile.value && files.length > 0) {
+      selectedFile.value = files[0]
+    }
+    operationMessage.value = files.length > 0
+      ? `目录已刷新，共发现 ${files.length} 个 markdown 文件。`
+      : '目录已刷新，但未发现 markdown 文件。'
+  })
+}
+
 const openSelectedFile = async () => {
   if (!canOpenFile.value) {
     return
   }
   await withErrorHandling(async () => {
     const content = await fileSystemAdapter.openFile(selectedFile.value)
+    selectedFile.value = selectedFile.value.trim()
     markdown.value = content
     activeMode.value = 'file-system'
     operationMessage.value = `已打开 ${selectedFile.value}。`
@@ -219,12 +241,15 @@ const exportJson = () => {
 
       <div v-if="isFsSupported" class="fsa-tools">
         <button type="button" @click="chooseDirectory">选择目录</button>
-        <select v-model="selectedFile">
-          <option disabled value="">请选择 markdown 文件</option>
-          <option v-for="file in markdownFiles" :key="file" :value="file">
-            {{ file }}
-          </option>
-        </select>
+        <button type="button" :disabled="!canRefreshFiles" @click="refreshDirectoryFiles">刷新文件列表</button>
+        <input
+          v-model="selectedFile"
+          list="markdown-file-options"
+          placeholder="输入或选择 markdown 文件名，如 test.md"
+        >
+        <datalist id="markdown-file-options">
+          <option v-for="file in markdownFiles" :key="file" :value="file" />
+        </datalist>
         <button type="button" :disabled="!canOpenFile" @click="openSelectedFile">打开文件</button>
         <button type="button" :disabled="!canSaveToFile || savingToFile" @click="saveToSourceFile">
           {{ savingToFile ? '保存中...' : '保存回原文件' }}
@@ -296,12 +321,17 @@ const exportJson = () => {
 }
 
 button,
-select {
+select,
+input {
   border: 1px solid #c4cddc;
   border-radius: 6px;
   background: #fff;
   padding: 8px 10px;
   font-size: 14px;
+}
+
+input {
+  min-width: 260px;
 }
 
 button {

@@ -11,6 +11,7 @@ export interface EditorStorageAdapter {
 export interface FileSystemStorageAdapter extends EditorStorageAdapter {
   hasDirectory(): boolean
   pickDirectory(): Promise<string[]>
+  listFiles(): Promise<string[]>
   openFile(fileName: string): Promise<string>
   getCurrentFileName(): string | null
 }

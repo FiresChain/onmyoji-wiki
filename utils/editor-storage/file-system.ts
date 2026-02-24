@@ -42,6 +42,10 @@ export class FileSystemEditorStorageAdapter implements FileSystemStorageAdapter 
     const candidate = window as DirectoryPickerCapableWindow
     this.directoryHandle = await candidate.showDirectoryPicker!({ mode: 'readwrite' })
     this.currentFileName = null
+    return this.listFiles()
+  }
+
+  async listFiles(): Promise<string[]> {
     return this.refreshFiles()
   }
 
@@ -50,15 +54,20 @@ export class FileSystemEditorStorageAdapter implements FileSystemStorageAdapter 
       throw new Error('请先选择目录。')
     }
 
-    let fileHandle = this.fileHandles.get(fileName)
+    const normalizedFileName = fileName.trim()
+    if (!normalizedFileName) {
+      throw new Error('请输入要打开的 markdown 文件名。')
+    }
+
+    let fileHandle = this.fileHandles.get(normalizedFileName)
     if (!fileHandle) {
-      fileHandle = await this.directoryHandle.getFileHandle(fileName, { create: false })
-      this.fileHandles.set(fileName, fileHandle)
+      fileHandle = await this.directoryHandle.getFileHandle(normalizedFileName, { create: false })
+      this.fileHandles.set(normalizedFileName, fileHandle)
     }
 
     const file = await fileHandle.getFile()
     const markdown = await file.text()
-    this.currentFileName = fileName
+    this.currentFileName = normalizedFileName
     return markdown
   }
 

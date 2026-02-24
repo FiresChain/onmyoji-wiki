@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import '@milkdown/theme-nord/style.css'
 
 const props = defineProps<{
@@ -21,6 +21,11 @@ let internalPatch = false
 
 onMounted(async () => {
   try {
+    await nextTick()
+    if (!root.value) {
+      throw new Error('Milkdown root element not found.')
+    }
+
     const [
       { Editor, rootCtx, defaultValueCtx },
       { commonmark },
@@ -89,14 +94,15 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="milkdown-editor">
+    <div ref="root" class="milkdown-root" :class="{ 'is-hidden': !!bootError }" />
     <div v-if="booting" class="booting">编辑器加载中...</div>
-    <div v-else-if="bootError" class="error">{{ bootError }}</div>
-    <div v-else ref="root" class="milkdown-root" />
+    <div v-if="bootError" class="error">{{ bootError }}</div>
   </div>
 </template>
 
 <style scoped>
 .milkdown-editor {
+  position: relative;
   border: 1px solid #d7d7d7;
   border-radius: 10px;
   background: #fff;
@@ -108,12 +114,20 @@ onBeforeUnmount(() => {
   padding: 12px;
 }
 
+.milkdown-root.is-hidden {
+  visibility: hidden;
+}
+
 .booting,
 .error {
-  min-height: 180px;
-  display: grid;
-  place-items: center;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
   color: #666;
+  padding: 12px;
 }
 
 .error {
