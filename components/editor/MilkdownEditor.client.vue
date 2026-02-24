@@ -18,6 +18,9 @@ let editor: any = null
 let getMarkdown: (() => string) | null = null
 let replaceAll: ((markdown: string) => any) | null = null
 let internalPatch = false
+let lastMarkdownFromEditor: string | null = null
+
+const normalizeMarkdown = (value: string): string => value.replace(/\r\n/g, '\n')
 
 onMounted(async () => {
   try {
@@ -57,7 +60,9 @@ onMounted(async () => {
           if (markdown === prevMarkdown || internalPatch) {
             return
           }
-          emit('update:modelValue', markdown)
+          const normalized = normalizeMarkdown(markdown)
+          lastMarkdownFromEditor = normalized
+          emit('update:modelValue', normalized)
         })
       })
       .use(commonmark)
@@ -77,14 +82,23 @@ watch(() => props.modelValue, (nextValue) => {
     return
   }
 
-  const currentValue = getMarkdown()
-  if (currentValue === nextValue) {
+  const normalizedNextValue = normalizeMarkdown(nextValue || '')
+  if (lastMarkdownFromEditor !== null && normalizedNextValue === lastMarkdownFromEditor) {
+    lastMarkdownFromEditor = null
+    return
+  }
+
+  const currentValue = normalizeMarkdown(getMarkdown())
+  if (currentValue === normalizedNextValue) {
     return
   }
 
   internalPatch = true
-  replaceAll(nextValue)
-  internalPatch = false
+  try {
+    replaceAll(normalizedNextValue)
+  } finally {
+    internalPatch = false
+  }
 })
 
 onBeforeUnmount(() => {
