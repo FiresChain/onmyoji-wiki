@@ -10,6 +10,7 @@ type GraphData = {
 type InlineFlowBlockPayload = {
   blockIndex: number
   graphData: GraphData
+  previewHeight: number
   error: string
 }
 
@@ -57,6 +58,7 @@ const commandKeys: Record<string, any> = {}
 
 const normalizeMarkdown = (value: string): string => value.replace(/\r\n/g, '\n')
 const EMPTY_GRAPH_DATA: GraphData = { nodes: [], edges: [] }
+const DEFAULT_FLOW_PREVIEW_HEIGHT = 260
 
 const normalizeGraphData = (input: any): GraphData => {
   if (!input || typeof input !== 'object') {
@@ -82,16 +84,39 @@ const normalizeGraphData = (input: any): GraphData => {
   }
 }
 
-const parseFlowGraphData = (raw: string): { graphData: GraphData; error: string } => {
+const resolvePreviewHeight = (input: any, fallback = DEFAULT_FLOW_PREVIEW_HEIGHT): number => {
+  if (!input || typeof input !== 'object') {
+    return fallback
+  }
+  const rawHeight = (input as Record<string, unknown>).height
+  if (typeof rawHeight === 'number' && Number.isFinite(rawHeight) && rawHeight > 0) {
+    return rawHeight
+  }
+  if (typeof rawHeight === 'string') {
+    const parsed = Number(rawHeight.trim())
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+  return fallback
+}
+
+const parseFlowGraphData = (raw: string): { graphData: GraphData; previewHeight: number; error: string } => {
   if (!raw.trim()) {
-    return { graphData: EMPTY_GRAPH_DATA, error: '' }
+    return { graphData: EMPTY_GRAPH_DATA, previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT, error: '' }
   }
 
   try {
-    return { graphData: normalizeGraphData(JSON.parse(raw)), error: '' }
+    const parsed = JSON.parse(raw)
+    return {
+      graphData: normalizeGraphData(parsed),
+      previewHeight: resolvePreviewHeight(parsed),
+      error: ''
+    }
   } catch {
     return {
       graphData: EMPTY_GRAPH_DATA,
+      previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT,
       error: '流程块 JSON 解析失败，点击“编辑流程块”后可重新保存覆盖。'
     }
   }
@@ -234,6 +259,7 @@ class FlowBlockNodeView {
     emit('open-flow-block', {
       blockIndex,
       graphData: parsed.graphData,
+      previewHeight: parsed.previewHeight,
       error: parsed.error
     })
   }
@@ -268,7 +294,7 @@ class FlowBlockNodeView {
         mode: 'preview',
         capability: 'render-only',
         data: parsed.graphData,
-        height: 260
+        height: parsed.previewHeight
       }),
       this.previewHost
     )
@@ -421,7 +447,7 @@ const insertText = (text: string, inline = false) => {
 }
 
 const insertFlowBlock = () => {
-  insertText('\n```yys-flow\n{\n  "schemaVersion": 1,\n  "fileList": [\n    {\n      "id": "flow-1",\n      "label": "File 1",\n      "name": "File 1",\n      "visible": true,\n      "type": "FLOW",\n      "graphRawData": {\n        "nodes": [],\n        "edges": []\n      }\n    }\n  ],\n  "activeFileId": "flow-1",\n  "activeFile": "File 1"\n}\n```\n')
+  insertText('\n```yys-flow\n{\n  "height": 260,\n  "schemaVersion": 1,\n  "fileList": [\n    {\n      "id": "flow-1",\n      "label": "File 1",\n      "name": "File 1",\n      "visible": true,\n      "type": "FLOW",\n      "graphRawData": {\n        "nodes": [],\n        "edges": []\n      }\n    }\n  ],\n  "activeFileId": "flow-1",\n  "activeFile": "File 1"\n}\n```\n')
 }
 
 const getMarkdownContent = (): string => {
