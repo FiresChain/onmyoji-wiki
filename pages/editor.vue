@@ -1,6 +1,5 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue'
-import MarkdownIt from 'markdown-it'
 import MilkdownEditor, { type MilkdownEditorHandle } from '~/components/editor/MilkdownEditor.client.vue'
 import { YysEditorPreview } from 'yys-editor'
 import 'yys-editor/style.css'
@@ -12,42 +11,32 @@ type GraphData = {
   edges: any[]
 }
 
-type FlowSegment = {
-  type: 'flow'
+type FlowBlock = {
   key: string
   blockIndex: number
   graphData: GraphData
-  raw: string
   error: string
 }
 
-type MarkdownSegment = {
-  type: 'markdown'
-  key: string
-  content: string
-  html: string
+type InlineFlowBlockPayload = {
+  blockIndex: number
+  graphData: GraphData
+  error: string
 }
-
-type PreviewSegment = FlowSegment | MarkdownSegment
 
 const DEFAULT_MARKDOWN = `# Onmyoji Wiki Editor
 
-欢迎使用编辑器 MVP。
+欢迎使用所见即所得编辑器。
 
 - 默认会自动保存到 localStorage
-- 支持导入 / 导出 markdown 与 json
-- 在支持 File System Access API 的浏览器中，可选择本地目录并回写原文件
+- 支持导入/导出 markdown 与 json
+- 支持 File System Access API 直接读写本地 markdown 文件
 
-点击上方“插入流程块”后，可在右侧预览点击流程块并打开 yys-editor 进行可视化编辑。
+点击上方“插入流程块”后，可在正文中直接预览并点击“编辑流程块”进行可视化编辑。
 `
 
 const EMPTY_GRAPH_DATA: GraphData = { nodes: [], edges: [] }
 const FLOW_BLOCK_REGEX = /```yys-flow[^\r\n]*\r?\n([\s\S]*?)```/g
-const markdownRenderer = new MarkdownIt({
-  html: false,
-  breaks: true,
-  linkify: true
-})
 
 const markdown = ref(DEFAULT_MARKDOWN)
 const localAdapter = new LocalStorageEditorStorageAdapter()
@@ -150,75 +139,40 @@ const parseFlowBlock = (raw: string): { data: GraphData; error: string } => {
   } catch {
     return {
       data: EMPTY_GRAPH_DATA,
-      error: '流程块 JSON 解析失败，仍可点击后在编辑器中重建并覆盖。'
+      error: '流程块 JSON 解析失败，打开编辑器后可重新保存覆盖。'
     }
   }
 }
 
-const parsePreviewSegments = (source: string): PreviewSegment[] => {
-  const segments: PreviewSegment[] = []
+const parseFlowBlocks = (source: string): FlowBlock[] => {
+  const blocks: FlowBlock[] = []
   const regex = new RegExp(FLOW_BLOCK_REGEX)
-  let lastIndex = 0
   let blockIndex = 0
   let match: RegExpExecArray | null
 
   while ((match = regex.exec(source)) !== null) {
-    const start = match.index
-    const end = regex.lastIndex
     const raw = (match[1] || '').trim()
     const parsed = parseFlowBlock(raw)
 
-    if (start > lastIndex) {
-      const markdownContent = source.slice(lastIndex, start)
-      segments.push({
-        type: 'markdown',
-        key: `md-${segments.length}`,
-        content: markdownContent,
-        html: markdownRenderer.render(markdownContent)
-      })
-    }
-
-    segments.push({
-      type: 'flow',
+    blocks.push({
       key: `flow-${blockIndex}`,
       blockIndex,
       graphData: parsed.data,
-      raw,
       error: parsed.error
     })
 
     blockIndex += 1
-    lastIndex = end
   }
 
-  if (lastIndex < source.length) {
-    const markdownContent = source.slice(lastIndex)
-    segments.push({
-      type: 'markdown',
-      key: `md-${segments.length}`,
-      content: markdownContent,
-      html: markdownRenderer.render(markdownContent)
-    })
-  }
-
-  if (segments.length === 0) {
-    segments.push({
-      type: 'markdown',
-      key: 'md-empty',
-      content: source,
-      html: markdownRenderer.render(source)
-    })
-  }
-
-  return segments
+  return blocks
 }
 
-const previewSegments = computed(() => parsePreviewSegments(markdown.value))
+const flowBlocks = computed(() => parseFlowBlocks(markdown.value))
 
 const replaceFlowBlock = (source: string, targetIndex: number, replacement: string): string => {
   const regex = new RegExp(FLOW_BLOCK_REGEX)
   let blockIndex = 0
-  const output = source.replace(regex, (fullMatch) => {
+  return source.replace(regex, (fullMatch) => {
     if (blockIndex === targetIndex) {
       blockIndex += 1
       return replacement
@@ -226,7 +180,6 @@ const replaceFlowBlock = (source: string, targetIndex: number, replacement: stri
     blockIndex += 1
     return fullMatch
   })
-  return output
 }
 
 const clearMessages = () => {
@@ -266,18 +219,27 @@ const runEditorAction = (action: (editor: MilkdownEditorHandle) => void) => {
 const insertFlowBlock = () => {
   runEditorAction((editor) => {
     editor.insertFlowBlock()
-    operationMessage.value = '已插入流程块。可在右侧预览点击流程块打开 yys-editor。'
+    operationMessage.value = '已插入流程块，可在正文中直接预览并点击“编辑流程块”进入可视化编辑。'
   })
 }
 
-const openFlowBlockEditor = (segment: FlowSegment) => {
+const openFlowBlockEditor = (block: FlowBlock) => {
   clearMessages()
-  editingBlockIndex.value = segment.blockIndex
-  editingGraphData.value = JSON.parse(JSON.stringify(segment.graphData))
-  if (segment.error) {
-    operationMessage.value = `${segment.error} 打开后可重新编辑并保存。`
+  editingBlockIndex.value = block.blockIndex
+  editingGraphData.value = JSON.parse(JSON.stringify(block.graphData))
+  if (block.error) {
+    operationMessage.value = `${block.error} 打开后可重新编辑并保存。`
   }
   flowEditorVisible.value = true
+}
+
+const handleInlineFlowBlockEdit = (payload: InlineFlowBlockPayload) => {
+  openFlowBlockEditor({
+    key: `flow-${payload.blockIndex}`,
+    blockIndex: payload.blockIndex,
+    graphData: normalizeGraphData(payload.graphData),
+    error: payload.error || ''
+  })
 }
 
 const closeFlowBlockEditor = () => {
@@ -420,7 +382,7 @@ onMounted(async () => {
   isFsSupported.value = fileSystemAdapter.isSupported()
   capabilityMessage.value = isFsSupported.value
     ? '检测到 File System Access API，可使用目录模式打开并保存 markdown 文件。'
-    : '当前浏览器不支持 File System Access API，已自动回退到 localStorage 模式。'
+    : '当前浏览器不支持 File System Access API，已回退到 localStorage 模式。'
 
   const restored = await localAdapter.loadInitialMarkdown()
   if (restored) {
@@ -506,7 +468,7 @@ onBeforeUnmount(() => {
         <input
           v-model="selectedFile"
           list="markdown-file-options"
-          placeholder="输入或选择 markdown 文件名，如 test.md"
+          placeholder="输入或选择 markdown 文件名，例如 test.md"
         >
         <datalist id="markdown-file-options">
           <option v-for="file in markdownFiles" :key="file" :value="file" />
@@ -522,41 +484,36 @@ onBeforeUnmount(() => {
 
       <div class="workspace">
         <section class="workspace-pane">
-          <h2>Markdown 编辑</h2>
-          <MilkdownEditor ref="milkdownRef" v-model="markdown" />
-        </section>
-
-        <section class="workspace-pane preview-pane">
-          <h2>渲染预览（点击流程块可编辑）</h2>
-          <div class="preview-content">
-            <template v-for="segment in previewSegments" :key="segment.key">
-              <div v-if="segment.type === 'markdown'" class="markdown-block" v-html="segment.html" />
-
-              <article v-else class="flow-block" @click="openFlowBlockEditor(segment)">
-                <header class="flow-block-header">
-                  <span>流程块 #{{ segment.blockIndex + 1 }}</span>
-                  <button type="button" @click.stop="openFlowBlockEditor(segment)">编辑</button>
-                </header>
-
-                <p v-if="segment.error" class="flow-error">{{ segment.error }}</p>
-                <ClientOnly>
-                  <YysEditorPreview
-                    mode="preview"
-                    capability="render-only"
-                    :data="segment.graphData"
-                    :height="280"
-                    :show-mini-map="false"
-                  />
-                  <template #fallback>
-                    <div class="flow-fallback">流程图加载中...</div>
-                  </template>
-                </ClientOnly>
-                <p class="flow-tip">点击块可打开 yys-editor 进行可视化编辑并回写 markdown。</p>
-              </article>
-            </template>
-          </div>
+          <h2>所见即所得编辑</h2>
+          <MilkdownEditor
+            ref="milkdownRef"
+            v-model="markdown"
+            @open-flow-block="handleInlineFlowBlockEdit"
+          />
         </section>
       </div>
+
+      <section class="flow-manager">
+        <header class="flow-manager-header">
+          <h2>流程块管理</h2>
+          <span class="flow-count">{{ flowBlocks.length }} 个</span>
+        </header>
+        <p class="flow-manager-tip">流程块已支持在正文内直接渲染与编辑，下方列表用于快速定位和兜底管理。</p>
+
+        <div v-if="flowBlocks.length === 0" class="flow-empty">
+          暂无流程块，点击上方“插入流程块”即可创建。
+        </div>
+
+        <div v-else class="flow-list">
+          <article v-for="block in flowBlocks" :key="block.key" class="flow-row">
+            <div class="flow-row-main">
+              <strong>流程块 #{{ block.blockIndex + 1 }}</strong>
+              <p v-if="block.error" class="flow-error">{{ block.error }}</p>
+            </div>
+            <button type="button" @click="openFlowBlockEditor(block)">编辑</button>
+          </article>
+        </div>
+      </section>
     </section>
 
     <div v-if="flowEditorVisible" class="flow-modal-mask" @click.self="closeFlowBlockEditor">
@@ -707,7 +664,7 @@ button:disabled {
 .workspace {
   margin-top: 16px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 14px;
 }
 
@@ -716,64 +673,70 @@ button:disabled {
   font-size: 16px;
 }
 
-.preview-pane {
+.flow-manager {
+  margin-top: 14px;
   border: 1px solid #d8dde8;
   border-radius: 10px;
   padding: 12px;
   background: #fbfdff;
 }
 
-.preview-content {
-  max-height: 760px;
-  overflow: auto;
-}
-
-.markdown-block :deep(*) {
-  max-width: 100%;
-}
-
-.flow-block {
-  margin: 14px 0;
-  border: 1px solid #d7deed;
-  border-radius: 10px;
-  background: #fff;
-  padding: 8px;
-  cursor: pointer;
-}
-
-.flow-block-header {
+.flow-manager-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
-  font-size: 13px;
-  color: #334155;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.flow-block-header button {
-  padding: 4px 8px;
-  font-size: 12px;
+.flow-manager-header h2 {
+  margin: 0;
+  font-size: 16px;
 }
 
-.flow-tip {
-  margin: 8px 0 0;
+.flow-count {
   font-size: 12px;
   color: #64748b;
+}
+
+.flow-manager-tip {
+  margin: 8px 0 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.flow-empty {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+}
+
+.flow-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.flow-row {
+  border: 1px solid #d7deed;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.flow-row-main {
+  min-width: 0;
 }
 
 .flow-error {
-  margin: 4px 0 8px;
+  margin: 4px 0 0;
   color: #b42318;
   font-size: 13px;
-}
-
-.flow-fallback {
-  border: 1px dashed #c4cddc;
-  border-radius: 8px;
-  min-height: 120px;
-  display: grid;
-  place-items: center;
-  color: #64748b;
 }
 
 .flow-modal-mask {
@@ -868,3 +831,6 @@ button:disabled {
   }
 }
 </style>
+
+
+
