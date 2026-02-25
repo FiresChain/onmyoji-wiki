@@ -4,7 +4,7 @@ import MilkdownEditor, { type MilkdownEditorHandle } from '~/components/editor/M
 import { YysEditorPreview } from 'yys-editor'
 import 'yys-editor/style.css'
 import { FileSystemEditorStorageAdapter } from '~/utils/editor-storage/file-system'
-import { LocalStorageEditorStorageAdapter } from '~/utils/editor-storage/local-storage'
+import { LOCAL_STORAGE_KEY, LocalStorageEditorStorageAdapter } from '~/utils/editor-storage/local-storage'
 
 type GraphData = {
   nodes: any[]
@@ -16,12 +16,14 @@ type FlowBlock = {
   blockIndex: number
   graphData: GraphData
   rawPayload: any
+  previewHeight: number
   error: string
 }
 
 type InlineFlowBlockPayload = {
   blockIndex: number
   graphData: GraphData
+  previewHeight: number
   error: string
 }
 
@@ -42,6 +44,26 @@ const DEFAULT_MARKDOWN = `# Onmyoji Wiki Editor
 
 const EMPTY_GRAPH_DATA: GraphData = { nodes: [], edges: [] }
 const FLOW_BLOCK_REGEX = /```yys-flow[^\r\n]*\r?\n([\s\S]*?)```/g
+const DEFAULT_FLOW_PREVIEW_HEIGHT = 260
+const FLOW_HEIGHT_TEST_GRAPH_DATA: GraphData = {
+  nodes: [
+    {
+      id: 'flow-height-test-node',
+      type: 'textNode',
+      x: 220,
+      y: 180,
+      properties: {
+        text: {
+          content: '<p>高度测试块</p>',
+          rich: true
+        },
+        width: 220,
+        height: 120
+      }
+    }
+  ],
+  edges: []
+}
 
 const markdown = ref(DEFAULT_MARKDOWN)
 const localAdapter = new LocalStorageEditorStorageAdapter()
@@ -62,11 +84,15 @@ const flowEditorVisible = ref(false)
 const editingBlockIndex = ref<number | null>(null)
 const editingGraphData = ref<GraphData>(EMPTY_GRAPH_DATA)
 const flowEditorRef = ref<any>(null)
+const flowModalBodyRef = ref<HTMLElement | null>(null)
+const flowEditorWidth = ref('100%')
+const flowEditorHeight = ref('600px')
 const milkdownRef = ref<MilkdownEditorHandle | null>(null)
 
 const importInput = ref<HTMLInputElement | null>(null)
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
 let flowResizeInterval: ReturnType<typeof setInterval> | null = null
+let flowModalResizeObserver: ResizeObserver | null = null
 let hydrated = false
 
 const lockBodyScroll = () => {
@@ -119,9 +145,9 @@ const triggerFlowEditorResize = () => {
       }
       return
     }
-    runResize()
     attempts += 1
-    if (attempts >= 20) {
+    runResize()
+    if (attempts >= 8) {
       if (flowResizeInterval) {
         clearInterval(flowResizeInterval)
         flowResizeInterval = null
@@ -166,18 +192,69 @@ const normalizeGraphData = (input: any): GraphData => {
   }
 }
 
-const parseFlowBlock = (raw: string): { data: GraphData; rawPayload: any; error: string } => {
+const updateFlowEditorViewportSize = () => {
+  const host = flowModalBodyRef.value
+  if (!host) {
+    return
+  }
+  const width = host.clientWidth
+  const height = host.clientHeight
+  if (width > 0) {
+    flowEditorWidth.value = `${width}px`
+  }
+  if (height > 0) {
+    flowEditorHeight.value = `${height}px`
+  }
+}
+
+const setupFlowModalResizeObserver = () => {
+  if (typeof ResizeObserver === 'undefined' || !flowModalBodyRef.value) {
+    return
+  }
+  flowModalResizeObserver?.disconnect()
+  flowModalResizeObserver = new ResizeObserver(() => {
+    updateFlowEditorViewportSize()
+    triggerFlowEditorResize()
+  })
+  flowModalResizeObserver.observe(flowModalBodyRef.value)
+}
+
+const resolvePreviewHeight = (input: any, fallback = DEFAULT_FLOW_PREVIEW_HEIGHT): number => {
+  if (!input || typeof input !== 'object') {
+    return fallback
+  }
+
+  const rawHeight = (input as Record<string, unknown>).height
+  if (typeof rawHeight === 'number' && Number.isFinite(rawHeight) && rawHeight > 0) {
+    return rawHeight
+  }
+  if (typeof rawHeight === 'string') {
+    const parsed = Number(rawHeight.trim())
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+  return fallback
+}
+
+const parseFlowBlock = (raw: string): { data: GraphData; rawPayload: any; previewHeight: number; error: string } => {
   if (!raw.trim()) {
-    return { data: EMPTY_GRAPH_DATA, rawPayload: null, error: '' }
+    return { data: EMPTY_GRAPH_DATA, rawPayload: null, previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT, error: '' }
   }
 
   try {
     const parsed = JSON.parse(raw)
-    return { data: normalizeGraphData(parsed), rawPayload: parsed, error: '' }
+    return {
+      data: normalizeGraphData(parsed),
+      rawPayload: parsed,
+      previewHeight: resolvePreviewHeight(parsed),
+      error: ''
+    }
   } catch {
     return {
       data: EMPTY_GRAPH_DATA,
       rawPayload: null,
+      previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT,
       error: '流程块 JSON 解析失败，打开编辑器后可重新保存覆盖。'
     }
   }
@@ -198,6 +275,7 @@ const parseFlowBlocks = (source: string): FlowBlock[] => {
       blockIndex,
       graphData: parsed.data,
       rawPayload: parsed.rawPayload,
+      previewHeight: parsed.previewHeight,
       error: parsed.error
     })
 
@@ -226,7 +304,8 @@ const deepClone = <T>(input: T): T => {
   return JSON.parse(JSON.stringify(input)) as T
 }
 
-const toFlowDemoLikePayload = (graphData: GraphData): Record<string, unknown> => ({
+const toFlowDemoLikePayload = (graphData: GraphData, previewHeight = DEFAULT_FLOW_PREVIEW_HEIGHT): Record<string, unknown> => ({
+  height: previewHeight,
   schemaVersion: 1,
   fileList: [
     {
@@ -242,7 +321,7 @@ const toFlowDemoLikePayload = (graphData: GraphData): Record<string, unknown> =>
   activeFile: 'File 1'
 })
 
-const serializeFlowPayload = (rawPayload: any, graphData: GraphData): string => {
+const serializeFlowPayload = (rawPayload: any, graphData: GraphData, previewHeight = DEFAULT_FLOW_PREVIEW_HEIGHT): string => {
   if (rawPayload && typeof rawPayload === 'object' && Array.isArray(rawPayload.fileList) && rawPayload.fileList.length > 0) {
     const nextPayload = deepClone(rawPayload) as Record<string, any>
     const fileList = Array.isArray(nextPayload.fileList) ? nextPayload.fileList : []
@@ -258,7 +337,7 @@ const serializeFlowPayload = (rawPayload: any, graphData: GraphData): string => 
     return JSON.stringify(nextPayload, null, 2)
   }
 
-  const normalizedPayload = toFlowDemoLikePayload(graphData)
+  const normalizedPayload = toFlowDemoLikePayload(graphData, previewHeight)
   return JSON.stringify(normalizedPayload, null, 2)
 }
 
@@ -303,6 +382,30 @@ const insertFlowBlock = () => {
   })
 }
 
+const buildFlowBlockMarkdown = (height: number): string => {
+  const payload = toFlowDemoLikePayload(deepClone(FLOW_HEIGHT_TEST_GRAPH_DATA), height)
+  return `\`\`\`yys-flow\n${JSON.stringify(payload, null, 2)}\n\`\`\``
+}
+
+const insertFlowHeightTestBlocks = () => {
+  runEditorAction((editor) => {
+    const block360 = buildFlowBlockMarkdown(360)
+    const block760 = buildFlowBlockMarkdown(760)
+    editor.insertText(`\n${block360}\n\n${block760}\n`)
+    operationMessage.value = '已插入两个测试流程块（height=360/760）。请直接在块上悬浮并点击“编辑”进行验证。'
+  })
+}
+
+const resetToDefaultTemplate = () => {
+  clearMessages()
+  markdown.value = DEFAULT_MARKDOWN
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem(LOCAL_STORAGE_KEY)
+  }
+  autosaveLabel.value = '已重置，等待自动保存'
+  operationMessage.value = '已重置为默认模板，并清除 localStorage 草稿。'
+}
+
 const openFlowBlockEditor = (block: FlowBlock) => {
   clearMessages()
   editingBlockIndex.value = block.blockIndex
@@ -318,6 +421,7 @@ const handleInlineFlowBlockEdit = (payload: InlineFlowBlockPayload) => {
     key: `flow-${payload.blockIndex}`,
     blockIndex: payload.blockIndex,
     graphData: normalizeGraphData(payload.graphData),
+    previewHeight: payload.previewHeight,
     error: payload.error || ''
   })
 }
@@ -364,7 +468,7 @@ const applyFlowBlockChanges = async () => {
   const graphData = flowEditorRef.value?.getGraphData?.()
   const normalizedGraphData = normalizeGraphData(graphData)
   const currentBlock = flowBlocks.value.find((item) => item.blockIndex === editingBlockIndex.value) || null
-  const flowPayload = serializeFlowPayload(currentBlock?.rawPayload, normalizedGraphData)
+  const flowPayload = serializeFlowPayload(currentBlock?.rawPayload, normalizedGraphData, currentBlock?.previewHeight ?? DEFAULT_FLOW_PREVIEW_HEIGHT)
   const serialized = `\`\`\`yys-flow\n${flowPayload}\n\`\`\``
   markdown.value = replaceFlowBlock(markdown.value, editingBlockIndex.value, serialized)
   flowEditorVisible.value = false
@@ -522,9 +626,16 @@ watch(markdown, (nextValue) => {
 watch(flowEditorVisible, (visible) => {
   if (visible) {
     lockBodyScroll()
+    nextTick(() => {
+      updateFlowEditorViewportSize()
+      setupFlowModalResizeObserver()
+      triggerFlowEditorResize()
+    })
     triggerFlowEditorResize()
     return
   }
+  flowModalResizeObserver?.disconnect()
+  flowModalResizeObserver = null
   if (flowResizeInterval) {
     clearInterval(flowResizeInterval)
     flowResizeInterval = null
@@ -534,6 +645,8 @@ watch(flowEditorVisible, (visible) => {
 
 onBeforeUnmount(() => {
   unlockBodyScroll()
+  flowModalResizeObserver?.disconnect()
+  flowModalResizeObserver = null
   if (flowResizeInterval) {
     clearInterval(flowResizeInterval)
     flowResizeInterval = null
@@ -557,6 +670,7 @@ onBeforeUnmount(() => {
           <button type="button" @click="triggerImport">导入 markdown/json</button>
           <button type="button" @click="exportMarkdown">导出 markdown</button>
           <button type="button" @click="exportJson">导出 json</button>
+          <button type="button" @click="resetToDefaultTemplate">重置默认模板</button>
         </div>
         <div class="right">
           <span class="mode">当前模式：{{ activeMode }}</span>
@@ -575,6 +689,7 @@ onBeforeUnmount(() => {
         <button type="button" @click="runEditorAction((editor) => editor.undo())">撤销</button>
         <button type="button" @click="runEditorAction((editor) => editor.redo())">重做</button>
         <button type="button" class="primary" @click="insertFlowBlock">插入流程块</button>
+        <button type="button" class="primary" @click="insertFlowHeightTestBlocks">插入高度测试块</button>
       </div>
 
       <div class="capability">
@@ -626,10 +741,11 @@ onBeforeUnmount(() => {
 
         <div v-else class="flow-list">
           <article v-for="block in flowBlocks" :key="block.key" class="flow-row">
-            <div class="flow-row-main">
-              <strong>流程块 #{{ block.blockIndex + 1 }}</strong>
-              <p v-if="block.error" class="flow-error">{{ block.error }}</p>
-            </div>
+	            <div class="flow-row-main">
+	              <strong>流程块 #{{ block.blockIndex + 1 }}</strong>
+	              <p class="flow-meta">预览高度: {{ block.previewHeight }}</p>
+	              <p v-if="block.error" class="flow-error">{{ block.error }}</p>
+	            </div>
             <div class="flow-row-actions">
               <button type="button" @click="openFlowBlockEditor(block)">编辑</button>
               <button type="button" class="danger" @click="removeFlowBlock(block.blockIndex)">删除</button>
@@ -637,6 +753,7 @@ onBeforeUnmount(() => {
           </article>
         </div>
       </section>
+
     </section>
 
     <div v-if="flowEditorVisible" class="flow-modal-mask" @click.self="closeFlowBlockEditor">
@@ -648,17 +765,20 @@ onBeforeUnmount(() => {
             <button type="button" class="primary" @click="applyFlowBlockChanges">应用到块</button>
           </div>
         </header>
-        <div class="flow-modal-body">
-          <ClientOnly>
-            <YysEditorPreview
-              ref="flowEditorRef"
-              class="flow-modal-editor"
-              mode="edit"
-              capability="interactive"
-              :data="editingGraphData"
-              height="100%"
-            />
-          </ClientOnly>
+        <div ref="flowModalBodyRef" class="flow-modal-body">
+          <div class="flow-modal-editor-host">
+            <ClientOnly>
+              <YysEditorPreview
+                ref="flowEditorRef"
+                class="flow-modal-editor"
+                mode="edit"
+                capability="interactive"
+                :data="editingGraphData"
+                :height="flowEditorHeight"
+                :width="flowEditorWidth"
+              />
+            </ClientOnly>
+          </div>
         </div>
       </section>
     </div>
@@ -856,6 +976,12 @@ button:disabled {
   min-width: 0;
 }
 
+.flow-meta {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
 .flow-row-actions {
   display: flex;
   align-items: center;
@@ -912,6 +1038,15 @@ button.danger:hover {
 
 .flow-modal-body {
   flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.flow-modal-editor-host {
+  flex: 1;
+  min-width: 0;
   min-height: 0;
   display: flex;
   overflow: hidden;
@@ -919,6 +1054,7 @@ button.danger:hover {
 
 .flow-modal-editor {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   width: 100%;
   height: 100%;
