@@ -15,6 +15,7 @@ type FlowBlock = {
   key: string
   blockIndex: number
   graphData: GraphData
+  rawPayload: any
   error: string
 }
 
@@ -22,6 +23,10 @@ type InlineFlowBlockPayload = {
   blockIndex: number
   graphData: GraphData
   error: string
+}
+
+type InlineFlowBlockDeletePayload = {
+  blockIndex: number
 }
 
 const DEFAULT_MARKDOWN = `# Onmyoji Wiki Editor
@@ -61,6 +66,7 @@ const milkdownRef = ref<MilkdownEditorHandle | null>(null)
 
 const importInput = ref<HTMLInputElement | null>(null)
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
+let flowResizeInterval: ReturnType<typeof setInterval> | null = null
 let hydrated = false
 
 const lockBodyScroll = () => {
@@ -86,14 +92,42 @@ const triggerFlowEditorResize = () => {
   if (typeof window === 'undefined') {
     return
   }
-  nextTick(() => {
+  const runResize = () => {
     flowEditorRef.value?.resizeCanvas?.()
     window.dispatchEvent(new Event('resize'))
-    setTimeout(() => {
-      flowEditorRef.value?.resizeCanvas?.()
-      window.dispatchEvent(new Event('resize'))
-    }, 120)
+  }
+
+  nextTick(() => {
+    runResize()
+    window.requestAnimationFrame(() => runResize())
+    setTimeout(() => runResize(), 120)
+    setTimeout(() => runResize(), 320)
+    setTimeout(() => runResize(), 700)
   })
+
+  if (flowResizeInterval) {
+    clearInterval(flowResizeInterval)
+    flowResizeInterval = null
+  }
+
+  let attempts = 0
+  flowResizeInterval = setInterval(() => {
+    if (!flowEditorVisible.value) {
+      if (flowResizeInterval) {
+        clearInterval(flowResizeInterval)
+        flowResizeInterval = null
+      }
+      return
+    }
+    runResize()
+    attempts += 1
+    if (attempts >= 20) {
+      if (flowResizeInterval) {
+        clearInterval(flowResizeInterval)
+        flowResizeInterval = null
+      }
+    }
+  }, 150)
 }
 
 const canOpenFile = computed(() => (
@@ -114,7 +148,10 @@ const normalizeGraphData = (input: any): GraphData => {
   }
 
   if (Array.isArray(input.fileList) && input.fileList.length > 0) {
-    const graphRawData = input.fileList[0]?.graphRawData
+    const activeFileId = typeof input.activeFileId === 'string' ? input.activeFileId : ''
+    const activeIndex = input.fileList.findIndex((item: any) => item?.id === activeFileId)
+    const targetIndex = activeIndex >= 0 ? activeIndex : 0
+    const graphRawData = input.fileList[targetIndex]?.graphRawData
     if (graphRawData && typeof graphRawData === 'object') {
       return {
         nodes: Array.isArray(graphRawData.nodes) ? graphRawData.nodes : [],
@@ -129,16 +166,18 @@ const normalizeGraphData = (input: any): GraphData => {
   }
 }
 
-const parseFlowBlock = (raw: string): { data: GraphData; error: string } => {
+const parseFlowBlock = (raw: string): { data: GraphData; rawPayload: any; error: string } => {
   if (!raw.trim()) {
-    return { data: EMPTY_GRAPH_DATA, error: '' }
+    return { data: EMPTY_GRAPH_DATA, rawPayload: null, error: '' }
   }
 
   try {
-    return { data: normalizeGraphData(JSON.parse(raw)), error: '' }
+    const parsed = JSON.parse(raw)
+    return { data: normalizeGraphData(parsed), rawPayload: parsed, error: '' }
   } catch {
     return {
       data: EMPTY_GRAPH_DATA,
+      rawPayload: null,
       error: '流程块 JSON 解析失败，打开编辑器后可重新保存覆盖。'
     }
   }
@@ -158,6 +197,7 @@ const parseFlowBlocks = (source: string): FlowBlock[] => {
       key: `flow-${blockIndex}`,
       blockIndex,
       graphData: parsed.data,
+      rawPayload: parsed.rawPayload,
       error: parsed.error
     })
 
@@ -180,6 +220,46 @@ const replaceFlowBlock = (source: string, targetIndex: number, replacement: stri
     blockIndex += 1
     return fullMatch
   })
+}
+
+const deepClone = <T>(input: T): T => {
+  return JSON.parse(JSON.stringify(input)) as T
+}
+
+const toFlowDemoLikePayload = (graphData: GraphData): Record<string, unknown> => ({
+  schemaVersion: 1,
+  fileList: [
+    {
+      id: 'flow-1',
+      label: 'File 1',
+      name: 'File 1',
+      visible: true,
+      type: 'FLOW',
+      graphRawData: graphData
+    }
+  ],
+  activeFileId: 'flow-1',
+  activeFile: 'File 1'
+})
+
+const serializeFlowPayload = (rawPayload: any, graphData: GraphData): string => {
+  if (rawPayload && typeof rawPayload === 'object' && Array.isArray(rawPayload.fileList) && rawPayload.fileList.length > 0) {
+    const nextPayload = deepClone(rawPayload) as Record<string, any>
+    const fileList = Array.isArray(nextPayload.fileList) ? nextPayload.fileList : []
+    const activeFileId = typeof nextPayload.activeFileId === 'string' ? nextPayload.activeFileId : ''
+    const activeIndex = fileList.findIndex((item: any) => item?.id === activeFileId)
+    const targetIndex = activeIndex >= 0 ? activeIndex : 0
+    const targetFile = fileList[targetIndex] || {}
+    fileList[targetIndex] = {
+      ...targetFile,
+      graphRawData: graphData
+    }
+    nextPayload.fileList = fileList
+    return JSON.stringify(nextPayload, null, 2)
+  }
+
+  const normalizedPayload = toFlowDemoLikePayload(graphData)
+  return JSON.stringify(normalizedPayload, null, 2)
 }
 
 const clearMessages = () => {
@@ -242,19 +322,50 @@ const handleInlineFlowBlockEdit = (payload: InlineFlowBlockPayload) => {
   })
 }
 
+const removeFlowBlock = (blockIndex: number) => {
+  markdown.value = replaceFlowBlock(markdown.value, blockIndex, '').replace(/\n{3,}/g, '\n\n')
+  if (editingBlockIndex.value !== null && editingBlockIndex.value === blockIndex) {
+    flowEditorVisible.value = false
+    editingBlockIndex.value = null
+  }
+  operationMessage.value = `流程块 #${blockIndex + 1} 已删除。`
+}
+
+const handleInlineFlowBlockDelete = (payload: InlineFlowBlockDeletePayload) => {
+  clearMessages()
+  removeFlowBlock(payload.blockIndex)
+}
+
 const closeFlowBlockEditor = () => {
   flowEditorVisible.value = false
   editingBlockIndex.value = null
 }
 
-const applyFlowBlockChanges = () => {
+const waitForEditorFlush = async () => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  await nextTick()
+  await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()))
+  await new Promise<void>((resolve) => window.setTimeout(() => resolve(), 40))
+}
+
+const applyFlowBlockChanges = async () => {
   if (editingBlockIndex.value === null) {
     return
   }
 
+  const activeElement = document.activeElement as HTMLElement | null
+  if (activeElement && typeof activeElement.blur === 'function') {
+    activeElement.blur()
+  }
+  await waitForEditorFlush()
+
   const graphData = flowEditorRef.value?.getGraphData?.()
   const normalizedGraphData = normalizeGraphData(graphData)
-  const serialized = `\`\`\`yys-flow\n${JSON.stringify(normalizedGraphData, null, 2)}\n\`\`\``
+  const currentBlock = flowBlocks.value.find((item) => item.blockIndex === editingBlockIndex.value) || null
+  const flowPayload = serializeFlowPayload(currentBlock?.rawPayload, normalizedGraphData)
+  const serialized = `\`\`\`yys-flow\n${flowPayload}\n\`\`\``
   markdown.value = replaceFlowBlock(markdown.value, editingBlockIndex.value, serialized)
   flowEditorVisible.value = false
   operationMessage.value = `流程块 #${editingBlockIndex.value + 1} 已更新。`
@@ -414,11 +525,19 @@ watch(flowEditorVisible, (visible) => {
     triggerFlowEditorResize()
     return
   }
+  if (flowResizeInterval) {
+    clearInterval(flowResizeInterval)
+    flowResizeInterval = null
+  }
   unlockBodyScroll()
 })
 
 onBeforeUnmount(() => {
   unlockBodyScroll()
+  if (flowResizeInterval) {
+    clearInterval(flowResizeInterval)
+    flowResizeInterval = null
+  }
   if (autosaveTimer) {
     clearTimeout(autosaveTimer)
   }
@@ -489,6 +608,7 @@ onBeforeUnmount(() => {
             ref="milkdownRef"
             v-model="markdown"
             @open-flow-block="handleInlineFlowBlockEdit"
+            @delete-flow-block="handleInlineFlowBlockDelete"
           />
         </section>
       </div>
@@ -510,7 +630,10 @@ onBeforeUnmount(() => {
               <strong>流程块 #{{ block.blockIndex + 1 }}</strong>
               <p v-if="block.error" class="flow-error">{{ block.error }}</p>
             </div>
-            <button type="button" @click="openFlowBlockEditor(block)">编辑</button>
+            <div class="flow-row-actions">
+              <button type="button" @click="openFlowBlockEditor(block)">编辑</button>
+              <button type="button" class="danger" @click="removeFlowBlock(block.blockIndex)">删除</button>
+            </div>
           </article>
         </div>
       </section>
@@ -733,6 +856,21 @@ button:disabled {
   min-width: 0;
 }
 
+.flow-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+button.danger {
+  border-color: #b42318;
+  color: #b42318;
+}
+
+button.danger:hover {
+  background: #fef2f2;
+}
+
 .flow-error {
   margin: 4px 0 0;
   color: #b42318;
@@ -775,9 +913,13 @@ button:disabled {
 .flow-modal-body {
   flex: 1;
   min-height: 0;
+  display: flex;
+  overflow: hidden;
 }
 
 .flow-modal-editor {
+  flex: 1;
+  min-height: 0;
   width: 100%;
   height: 100%;
   display: block;

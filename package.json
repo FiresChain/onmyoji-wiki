@@ -21,7 +21,7 @@
     "markdown-it": "^14.1.1",
     "nuxt": "^3.13.0",
     "vue": "latest",
-    "yys-editor": "^1.0.4"
+    "yys-editor": "file:../yys-editor"
   },
   "devDependencies": {
     "@types/node": "^20.11.0"

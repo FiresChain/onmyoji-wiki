@@ -13,6 +13,10 @@ type InlineFlowBlockPayload = {
   error: string
 }
 
+type InlineFlowBlockDeletePayload = {
+  blockIndex: number
+}
+
 export type MilkdownEditorHandle = {
   toggleBold: () => void
   toggleItalic: () => void
@@ -34,6 +38,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void
   (event: 'open-flow-block', payload: InlineFlowBlockPayload): void
+  (event: 'delete-flow-block', payload: InlineFlowBlockDeletePayload): void
 }>()
 
 const root = ref<HTMLDivElement | null>(null)
@@ -59,7 +64,10 @@ const normalizeGraphData = (input: any): GraphData => {
   }
 
   if (Array.isArray(input.fileList) && input.fileList.length > 0) {
-    const graphRawData = input.fileList[0]?.graphRawData
+    const activeFileId = typeof input.activeFileId === 'string' ? input.activeFileId : ''
+    const activeIndex = input.fileList.findIndex((item: any) => item?.id === activeFileId)
+    const targetIndex = activeIndex >= 0 ? activeIndex : 0
+    const graphRawData = input.fileList[targetIndex]?.graphRawData
     if (graphRawData && typeof graphRawData === 'object') {
       return {
         nodes: Array.isArray(graphRawData.nodes) ? graphRawData.nodes : [],
@@ -87,6 +95,15 @@ const parseFlowGraphData = (raw: string): { graphData: GraphData; error: string 
       error: '流程块 JSON 解析失败，点击“编辑流程块”后可重新保存覆盖。'
     }
   }
+}
+
+const hashText = (input: string): string => {
+  let hash = 5381
+  for (let i = 0; i < input.length; i += 1) {
+    hash = ((hash << 5) + hash) + input.charCodeAt(i)
+    hash &= 0x7fffffff
+  }
+  return `h${hash.toString(16)}`
 }
 
 const isFlowCodeBlock = (node: any): boolean => {
@@ -122,7 +139,9 @@ class FlowBlockNodeView {
   dom: HTMLDivElement
   private readonly previewHost: HTMLDivElement
   private readonly statusNode: HTMLParagraphElement
+  private readonly actionsNode: HTMLDivElement
   private readonly editButton: HTMLButtonElement
+  private readonly deleteButton: HTMLButtonElement
   private node: any
   private readonly view: any
   private readonly getPos: boolean | (() => number | undefined)
@@ -135,27 +154,30 @@ class FlowBlockNodeView {
     this.dom = document.createElement('section')
     this.dom.className = 'flow-nodeview'
 
-    const header = document.createElement('header')
-    header.className = 'flow-nodeview-header'
-
-    const title = document.createElement('strong')
-    title.textContent = '流程块'
-    header.appendChild(title)
+    this.actionsNode = document.createElement('div')
+    this.actionsNode.className = 'flow-nodeview-actions'
 
     this.editButton = document.createElement('button')
     this.editButton.type = 'button'
-    this.editButton.className = 'flow-nodeview-action'
-    this.editButton.textContent = '编辑流程块'
+    this.editButton.className = 'flow-nodeview-action is-edit'
+    this.editButton.textContent = '编辑'
     this.editButton.addEventListener('click', this.handleEdit)
-    header.appendChild(this.editButton)
 
+    this.deleteButton = document.createElement('button')
+    this.deleteButton.type = 'button'
+    this.deleteButton.className = 'flow-nodeview-action is-delete'
+    this.deleteButton.textContent = '删除'
+    this.deleteButton.addEventListener('click', this.handleDelete)
+
+    this.actionsNode.appendChild(this.editButton)
+    this.actionsNode.appendChild(this.deleteButton)
     this.previewHost = document.createElement('div')
     this.previewHost.className = 'flow-nodeview-preview'
 
     this.statusNode = document.createElement('p')
     this.statusNode.className = 'flow-nodeview-status'
 
-    this.dom.appendChild(header)
+    this.dom.appendChild(this.actionsNode)
     this.dom.appendChild(this.previewHost)
     this.dom.appendChild(this.statusNode)
 
@@ -190,16 +212,20 @@ class FlowBlockNodeView {
 
   destroy() {
     this.editButton.removeEventListener('click', this.handleEdit)
+    this.deleteButton.removeEventListener('click', this.handleDelete)
     render(null, this.previewHost)
   }
 
-  private readonly handleEdit = () => {
+  private resolveCurrentBlockIndex(): number {
     const pos = typeof this.getPos === 'function' ? this.getPos() : -1
     if (typeof pos !== 'number' || pos < 0) {
-      return
+      return -1
     }
+    return resolveFlowBlockIndex(this.view?.state?.doc, pos)
+  }
 
-    const blockIndex = resolveFlowBlockIndex(this.view?.state?.doc, pos)
+  private readonly handleEdit = () => {
+    const blockIndex = this.resolveCurrentBlockIndex()
     if (blockIndex < 0) {
       return
     }
@@ -212,8 +238,18 @@ class FlowBlockNodeView {
     })
   }
 
+  private readonly handleDelete = () => {
+    const blockIndex = this.resolveCurrentBlockIndex()
+    if (blockIndex < 0) {
+      return
+    }
+    emit('delete-flow-block', { blockIndex })
+  }
+
   private renderNode(node: any) {
-    const parsed = parseFlowGraphData(node?.textContent ?? '')
+    const rawText = node?.textContent ?? ''
+    const parsed = parseFlowGraphData(rawText)
+    const previewKey = hashText(rawText)
     if (!flowPreviewComponent.value) {
       this.previewHost.textContent = '流程图组件加载中...'
       if (parsed.error) {
@@ -228,6 +264,7 @@ class FlowBlockNodeView {
 
     render(
       h(flowPreviewComponent.value, {
+        key: previewKey,
         mode: 'preview',
         capability: 'render-only',
         data: parsed.graphData,
@@ -384,7 +421,7 @@ const insertText = (text: string, inline = false) => {
 }
 
 const insertFlowBlock = () => {
-  insertText('\n```yys-flow\n{\n  "nodes": [],\n  "edges": []\n}\n```\n')
+  insertText('\n```yys-flow\n{\n  "schemaVersion": 1,\n  "fileList": [\n    {\n      "id": "flow-1",\n      "label": "File 1",\n      "name": "File 1",\n      "visible": true,\n      "type": "FLOW",\n      "graphRawData": {\n        "nodes": [],\n        "edges": []\n      }\n    }\n  ],\n  "activeFileId": "flow-1",\n  "activeFile": "File 1"\n}\n```\n')
 }
 
 const getMarkdownContent = (): string => {
@@ -432,11 +469,12 @@ defineExpose<MilkdownEditorHandle>({
 }
 
 :deep(.flow-nodeview) {
-  margin: 10px 0;
-  border: 1px solid #cdd6e6;
-  border-radius: 10px;
+  position: relative;
+  margin: 12px 0;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
   overflow: hidden;
-  background: #f8fbff;
+  background: #fff;
 }
 
 :deep(.flow-nodeview.is-selected) {
@@ -444,27 +482,51 @@ defineExpose<MilkdownEditorHandle>({
   box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.16);
 }
 
-:deep(.flow-nodeview-header) {
-  padding: 10px 12px;
-  border-bottom: 1px solid #d8e0ee;
-  background: #eef4fb;
+:deep(.flow-nodeview-actions) {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  pointer-events: none;
+}
+
+:deep(.flow-nodeview:hover .flow-nodeview-actions),
+:deep(.flow-nodeview.is-selected .flow-nodeview-actions) {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 :deep(.flow-nodeview-action) {
-  border: 1px solid #0f766e;
-  background: #0f766e;
-  color: #fff;
-  border-radius: 6px;
-  padding: 6px 10px;
+  padding: 6px 12px;
+  background: #fff;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
   cursor: pointer;
+  font-size: 12px;
+  color: #1f2937;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.flow-nodeview-action.is-edit:hover) {
+  background: #f0fdf4;
+  border-color: #0f766e;
+  color: #0f766e;
+}
+
+:deep(.flow-nodeview-action.is-delete:hover) {
+  background: #fef2f2;
+  border-color: #b42318;
+  color: #b42318;
 }
 
 :deep(.flow-nodeview-preview) {
-  min-height: 180px;
+  min-height: 220px;
   background: #fff;
 }
 
