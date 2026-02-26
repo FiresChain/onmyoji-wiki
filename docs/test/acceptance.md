@@ -42,7 +42,7 @@
 - 再看 `candidate result / candidate threw`：确认是否 `commandsCtx.call(...)` 返回 `false` 或抛错。
 - `pages/editor.vue` 工具栏是否阻止了鼠标点击导致的选区丢失（`@mousedown` 处理）。
 
-## 12. 编辑视图切换（可视 / Markdown / 双栏）
+## 12. 编辑视图切换（可视 / Markdown / 双栏）（已完成）
 
 步骤：
 - 点击“视图模式”切换：可视编辑、Markdown、双栏。
@@ -55,7 +55,7 @@
 - 双栏模式下：左侧 Markdown 源码、右侧可视编辑。
 - 工具栏格式命令在“可视编辑 / 双栏”可用，在“Markdown”禁用。
 
-## 3. 流程块插入、渲染与编辑
+## 3. 流程块插入、渲染与编辑（已完成）
 
 步骤：
 - 点击“插入流程块”。
@@ -70,37 +70,46 @@
 - `components/editor/MilkdownEditor.client.vue` 的 Flow NodeView 实现。
 - `pages/editor.vue` 的 `openFlowBlockEditor(...)` / `applyFlowBlockChanges(...)`。
 
-## 4. 流程块位置调整（上移/下移）
+## 4. 流程块位置调整（剪切/粘贴为主）
 
 步骤：
 - 插入至少 2 个流程块，确保能区分顺序。
-- 在“流程块管理区”点击某个块的“上移/下移”。
-- 在正文内联块上点击“上移/下移”。
+- 在正文内联块或“流程块管理区”点击某个块的“剪切”。
+- 将光标放到目标位置，点击工具栏“粘贴流程块”。
+- 可选回归：再验证“上移/下移”仍可作为辅助操作。
 
 预期：
-- 两种入口都能调整块顺序。
-- 调整后 Markdown 中的块顺序真实变化（刷新后仍保持）。
+- 剪切后，原位置流程块会从 Markdown 中移除。
+- 被剪切块的完整 markdown（```yys-flow ... ```）会缓存到当前编辑会话；若浏览器允许，也会写入系统剪贴板。
+- 粘贴时优先插入到当前光标位置；若无有效光标，回退为追加到文档末尾。
+- 粘贴后流程块数据结构保持不变，渲染与编辑可继续正常工作。
 
 失败时排查：
-- `pages/editor.vue` 的 `moveFlowBlock(...)` 与序列化替换逻辑。
+- `pages/editor.vue` 的 `cutFlowBlock(...)`、`pasteFlowBlock(...)`、`resolveFlowBlockMarkdown(...)`、`appendFlowBlockToDocEnd(...)`。
+- `components/editor/MilkdownEditor.client.vue` 的 Flow NodeView `cut-flow-block` 事件触发链路。
 
 ## 5. 光标与可编辑性（流程块在文档末尾）
 
-目的：验证“流程块在最后一块时，光标无法切换到文档最后、无法继续输入”的问题是否存在。
+目的：验证“流程块在文档末尾时”，可通过“剪切 + 粘贴”路径绕开末尾光标难以编辑的问题。
 
 步骤：
 - 在文档末尾插入一个流程块，使它成为最后一个 block。
-- 将鼠标点击到流程块后方，尝试把光标放到流程块之后并继续输入。
-- 用键盘方向键/End 键/点击空白区域尝试将光标移动到最后。
+- 尝试直接把光标放到流程块之后继续输入（记录是否仍存在末尾光标问题）。
+- 使用内联或管理区“剪切”将该末尾流程块移除。
+- 将光标放到目标位置并点击“粘贴流程块”；若无法稳定定位光标，直接点击“粘贴流程块”验证回退逻辑。
 
 预期：
-- 光标可以落在流程块之后；可以在其后继续输入任意文字。
+- 即使末尾光标仍有兼容性问题，也能通过“剪切 + 粘贴流程块”完成位置调整，不依赖反复“上移/下移”。
+- 粘贴优先到当前光标；无有效光标时自动追加到文档末尾。
+- 完成位置调整后可继续编辑正文（至少不被末尾流程块卡住）。
 
 记录：
-- 若失败，记录复现步骤、浏览器版本、是否仅发生在末尾/中间。
+- 若失败，记录复现步骤、浏览器版本、是否仅发生在末尾/中间，以及“剪切/粘贴路径”具体失败环节。
 
 排查点：
-- `components/editor/MilkdownEditor.client.vue` NodeView 的 `stopEvent` / `ignoreMutation` / `contentDOM` 相关行为。
+- `pages/editor.vue` 的 `runEditorAction(...)`、`pasteFlowBlock(...)` 回退逻辑。
+- `components/editor/MilkdownEditor.client.vue` NodeView 的按钮事件是否正常触发到页面层。
+- `components/editor/MilkdownEditor.client.vue` 是否已启用 `@milkdown/kit/plugin/cursor` 与 `@milkdown/kit/plugin/trailing`（含 gapcursor 样式）。
 
 ## 6. 流程块高度调整（入口与生效）
 
