@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { joinURL } from 'ufo'
 import { YysEditorPreview } from 'yys-editor'
 import 'yys-editor/style.css'
 
@@ -26,9 +27,23 @@ const props = withDefaults(defineProps<{
 const flowData = ref<GraphData>({ nodes: [], edges: [] })
 const loading = ref(false)
 const errorMessage = ref('')
+const runtimeConfig = useRuntimeConfig()
 const resolvedCapability = computed<FlowCapabilityLevel>(() => {
   return props.capability || 'render-only'
 })
+
+const resolveSrcUrl = (src: string) => {
+  if (!src) {
+    return ''
+  }
+  if (/^https?:\/\//i.test(src) || src.startsWith('//')) {
+    return src
+  }
+  if (src.startsWith('/')) {
+    return joinURL(runtimeConfig.app.baseURL || '/', src.slice(1))
+  }
+  return src
+}
 
 const normalizeData = (input: any): GraphData => {
   if (!input || typeof input !== 'object') {
@@ -56,6 +71,9 @@ const applyData = (data: any) => {
 }
 
 const loadFromSrc = async (src: string) => {
+  if (import.meta.server) {
+    return
+  }
   if (!src) {
     errorMessage.value = ''
     applyData(props.data)
@@ -65,7 +83,7 @@ const loadFromSrc = async (src: string) => {
   loading.value = true
   errorMessage.value = ''
   try {
-    const response = await fetch(src)
+    const response = await fetch(resolveSrcUrl(src))
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
     }
@@ -80,9 +98,11 @@ const loadFromSrc = async (src: string) => {
   }
 }
 
-watch(() => props.src, (newSrc) => {
-  void loadFromSrc(newSrc)
-}, { immediate: true })
+if (import.meta.client) {
+  watch(() => props.src, (newSrc) => {
+    void loadFromSrc(newSrc)
+  }, { immediate: true })
+}
 
 watch(() => props.data, (newData) => {
   if (!props.src) {
