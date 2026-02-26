@@ -45,6 +45,30 @@ const resolveSrcUrl = (src: string) => {
   return src
 }
 
+const resolveAssetUrl = (url: string) => {
+  if (!url.startsWith('/assets/')) {
+    return url
+  }
+  return joinURL(runtimeConfig.app.baseURL || '/', url.slice(1))
+}
+
+const rewriteAssetUrls = (input: any): any => {
+  if (typeof input === 'string') {
+    return resolveAssetUrl(input)
+  }
+  if (Array.isArray(input)) {
+    return input.map((item) => rewriteAssetUrls(item))
+  }
+  if (input && typeof input === 'object') {
+    const output: Record<string, any> = {}
+    for (const [key, value] of Object.entries(input)) {
+      output[key] = rewriteAssetUrls(value)
+    }
+    return output
+  }
+  return input
+}
+
 const normalizeData = (input: any): GraphData => {
   if (!input || typeof input !== 'object') {
     return { nodes: [], edges: [] }
@@ -67,7 +91,7 @@ const normalizeData = (input: any): GraphData => {
 }
 
 const applyData = (data: any) => {
-  flowData.value = normalizeData(data)
+  flowData.value = rewriteAssetUrls(normalizeData(data))
 }
 
 const loadFromSrc = async (src: string) => {
