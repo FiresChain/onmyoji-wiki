@@ -1,0 +1,48 @@
+name: Sync Assets From yys-editor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-assets
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout onmyoji-wiki
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout yys-editor
+        uses: actions/checkout@v4
+        with:
+          repository: Powerful-517/yys-editor
+          ref: main
+          path: .upstream/yys-editor
+
+      - name: Sync selected directories
+        run: |
+          set -eux
+          rsync -av --delete .upstream/yys-editor/public/assets/ public/assets/
+
+      - name: Commit and push if changed
+        run: |
+          set -eux
+          if git diff --quiet -- public/assets; then
+            echo "No asset changes."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/assets
+          git commit -m "chore: sync assets from yys-editor"
+          git push origin HEAD:main
