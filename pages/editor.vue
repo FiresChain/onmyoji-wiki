@@ -30,6 +30,10 @@ type InlineFlowBlockDeletePayload = {
   blockIndex: number
 }
 
+type InlineFlowBlockCutPayload = {
+  blockIndex: number
+}
+
 type InlineFlowBlockMovePayload = {
   blockIndex: number
   direction: 'up' | 'down'
@@ -99,6 +103,7 @@ const flowEditorHeight = ref('600px')
 const milkdownRef = ref<MilkdownEditorHandle | null>(null)
 const editorViewMode = ref<EditorViewMode>('visual')
 const runtimeConfig = useRuntimeConfig()
+const flowClipboardMarkdown = ref('')
 
 const importInput = ref<HTMLInputElement | null>(null)
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -182,6 +187,7 @@ const canRefreshFiles = computed(() => (
 const showVisualPane = computed(() => editorViewMode.value === 'visual' || editorViewMode.value === 'split')
 const showMarkdownPane = computed(() => editorViewMode.value === 'markdown' || editorViewMode.value === 'split')
 const canUseVisualCommands = computed(() => showVisualPane.value)
+const canPasteFlowBlock = computed(() => flowClipboardMarkdown.value.trim().length > 0)
 
 const updateFlowEditorViewportSize = () => {
   const host = flowModalBodyRef.value
@@ -318,6 +324,14 @@ const collectFlowBlockMatches = (source: string): string[] => {
   return matches
 }
 
+const resolveFlowBlockMarkdown = (source: string, blockIndex: number): string => {
+  if (blockIndex < 0) {
+    return ''
+  }
+  const matches = collectFlowBlockMatches(source)
+  return matches[blockIndex] || ''
+}
+
 const reorderFlowBlocks = (source: string, fromIndex: number, toIndex: number): string => {
   if (fromIndex === toIndex) {
     return source
@@ -381,6 +395,32 @@ const serializeFlowPayload = (rawPayload: any, graphData: GraphData, previewHeig
 
   const normalizedPayload = toFlowDemoLikePayload(graphData, previewHeight)
   return JSON.stringify(normalizedPayload, null, 2)
+}
+
+const normalizeMarkdownText = (value: string): string => value.replace(/\r\n/g, '\n')
+
+const appendFlowBlockToDocEnd = (blockMarkdown: string): boolean => {
+  const normalizedBlock = blockMarkdown.trim()
+  if (!normalizedBlock) {
+    return false
+  }
+  const source = markdown.value.trimEnd()
+  markdown.value = source.length > 0
+    ? `${source}\n\n${normalizedBlock}\n`
+    : `${normalizedBlock}\n`
+  return true
+}
+
+const writeTextToClipboard = async (text: string): Promise<boolean> => {
+  if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+    return false
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
 }
 
 const clearMessages = () => {
@@ -497,6 +537,30 @@ const insertFlowHeightTestBlocks = () => {
   })
 }
 
+const pasteFlowBlock = () => {
+  runEditorAction((editor) => {
+    const blockMarkdown = flowClipboardMarkdown.value.trim()
+    if (!blockMarkdown) {
+      operationError.value = '当前会话暂无可粘贴的流程块，请先剪切一个流程块。'
+      return
+    }
+
+    const before = normalizeMarkdownText(editor.getMarkdown())
+    editor.insertText(`\n${blockMarkdown}\n`)
+    const after = normalizeMarkdownText(editor.getMarkdown())
+    if (before !== after) {
+      operationMessage.value = '已在当前光标位置粘贴流程块。'
+      return
+    }
+
+    if (appendFlowBlockToDocEnd(blockMarkdown)) {
+      operationMessage.value = '未检测到有效光标，已将流程块追加到文档末尾。'
+      return
+    }
+    operationError.value = '粘贴失败：流程块内容为空。'
+  })
+}
+
 const resetToDefaultTemplate = () => {
   clearMessages()
   markdown.value = DEFAULT_MARKDOWN
@@ -529,18 +593,43 @@ const handleInlineFlowBlockEdit = (payload: InlineFlowBlockPayload) => {
   })
 }
 
-const removeFlowBlock = (blockIndex: number) => {
+const removeFlowBlock = (blockIndex: number, options?: { message?: string }) => {
   markdown.value = replaceFlowBlock(markdown.value, blockIndex, '').replace(/\n{3,}/g, '\n\n')
-  if (editingBlockIndex.value !== null && editingBlockIndex.value === blockIndex) {
-    flowEditorVisible.value = false
-    editingBlockIndex.value = null
+  if (editingBlockIndex.value !== null) {
+    if (editingBlockIndex.value === blockIndex) {
+      flowEditorVisible.value = false
+      editingBlockIndex.value = null
+    } else if (editingBlockIndex.value > blockIndex) {
+      editingBlockIndex.value -= 1
+    }
   }
-  operationMessage.value = `流程块 #${blockIndex + 1} 已删除。`
+  operationMessage.value = options?.message || `流程块 #${blockIndex + 1} 已删除。`
 }
 
 const handleInlineFlowBlockDelete = (payload: InlineFlowBlockDeletePayload) => {
   clearMessages()
   removeFlowBlock(payload.blockIndex)
+}
+
+const cutFlowBlock = async (blockIndex: number) => {
+  clearMessages()
+  const targetMarkdown = resolveFlowBlockMarkdown(markdown.value, blockIndex)
+  if (!targetMarkdown) {
+    operationError.value = `剪切失败：未找到流程块 #${blockIndex + 1}。`
+    return
+  }
+
+  flowClipboardMarkdown.value = targetMarkdown
+  const copied = await writeTextToClipboard(targetMarkdown)
+  removeFlowBlock(blockIndex, {
+    message: copied
+      ? `流程块 #${blockIndex + 1} 已剪切，可在任意位置粘贴（已同步系统剪贴板）。`
+      : `流程块 #${blockIndex + 1} 已剪切，可在当前会话中粘贴。`
+  })
+}
+
+const handleInlineFlowBlockCut = async (payload: InlineFlowBlockCutPayload) => {
+  await cutFlowBlock(payload.blockIndex)
 }
 
 const moveFlowBlock = (blockIndex: number, direction: 'up' | 'down') => {
@@ -907,6 +996,7 @@ onBeforeUnmount(() => {
         <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.undo())">撤销</button>
         <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.redo())">重做</button>
         <button type="button" class="primary" :disabled="!canUseVisualCommands" @click="insertFlowBlock">插入流程块</button>
+        <button type="button" class="primary" :disabled="!canUseVisualCommands || !canPasteFlowBlock" @click="pasteFlowBlock">粘贴流程块</button>
         <button type="button" class="primary" :disabled="!canUseVisualCommands" @click="insertFlowHeightTestBlocks">插入高度测试块</button>
       </div>
 
@@ -954,6 +1044,7 @@ onBeforeUnmount(() => {
             v-model="markdown"
             @open-flow-block="handleInlineFlowBlockEdit"
             @delete-flow-block="handleInlineFlowBlockDelete"
+            @cut-flow-block="handleInlineFlowBlockCut"
             @move-flow-block="handleInlineFlowBlockMove"
           />
         </section>
@@ -1007,6 +1098,7 @@ onBeforeUnmount(() => {
             <div class="flow-row-actions">
               <button type="button" :disabled="block.blockIndex === 0" @click="moveFlowBlock(block.blockIndex, 'up')">上移</button>
               <button type="button" :disabled="block.blockIndex === flowBlocks.length - 1" @click="moveFlowBlock(block.blockIndex, 'down')">下移</button>
+              <button type="button" @click="cutFlowBlock(block.blockIndex)">剪切</button>
               <button type="button" @click="openFlowBlockEditor(block)">编辑</button>
               <button type="button" class="danger" @click="removeFlowBlock(block.blockIndex)">删除</button>
             </div>

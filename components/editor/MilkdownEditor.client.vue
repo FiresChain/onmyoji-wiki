@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { h, nextTick, onBeforeUnmount, onMounted, ref, render, shallowRef, watch } from 'vue'
 import '@milkdown/theme-nord/style.css'
+import '@milkdown/kit/prose/gapcursor/style/gapcursor.css'
 import { normalizeGraphForPreview, normalizeGraphData, type GraphData } from '~/utils/flow-preview'
 
 type InlineFlowBlockPayload = {
@@ -11,6 +12,10 @@ type InlineFlowBlockPayload = {
 }
 
 type InlineFlowBlockDeletePayload = {
+  blockIndex: number
+}
+
+type InlineFlowBlockCutPayload = {
   blockIndex: number
 }
 
@@ -43,6 +48,7 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void
   (event: 'open-flow-block', payload: InlineFlowBlockPayload): void
   (event: 'delete-flow-block', payload: InlineFlowBlockDeletePayload): void
+  (event: 'cut-flow-block', payload: InlineFlowBlockCutPayload): void
   (event: 'move-flow-block', payload: InlineFlowBlockMovePayload): void
 }>()
 
@@ -205,6 +211,7 @@ class FlowBlockNodeView {
   private readonly statusNode: HTMLParagraphElement
   private readonly actionsNode: HTMLDivElement
   private readonly editButton: HTMLButtonElement
+  private readonly cutButton: HTMLButtonElement
   private readonly deleteButton: HTMLButtonElement
   private readonly moveUpButton: HTMLButtonElement
   private readonly moveDownButton: HTMLButtonElement
@@ -229,6 +236,12 @@ class FlowBlockNodeView {
     this.editButton.textContent = '编辑'
     this.editButton.addEventListener('click', this.handleEdit)
 
+    this.cutButton = document.createElement('button')
+    this.cutButton.type = 'button'
+    this.cutButton.className = 'flow-nodeview-action is-cut'
+    this.cutButton.textContent = '剪切'
+    this.cutButton.addEventListener('click', this.handleCut)
+
     this.deleteButton = document.createElement('button')
     this.deleteButton.type = 'button'
     this.deleteButton.className = 'flow-nodeview-action is-delete'
@@ -249,6 +262,7 @@ class FlowBlockNodeView {
 
     this.actionsNode.appendChild(this.moveUpButton)
     this.actionsNode.appendChild(this.moveDownButton)
+    this.actionsNode.appendChild(this.cutButton)
     this.actionsNode.appendChild(this.editButton)
     this.actionsNode.appendChild(this.deleteButton)
     this.previewHost = document.createElement('div')
@@ -292,6 +306,7 @@ class FlowBlockNodeView {
 
   destroy() {
     this.editButton.removeEventListener('click', this.handleEdit)
+    this.cutButton.removeEventListener('click', this.handleCut)
     this.deleteButton.removeEventListener('click', this.handleDelete)
     this.moveUpButton.removeEventListener('click', this.handleMoveUp)
     this.moveDownButton.removeEventListener('click', this.handleMoveDown)
@@ -327,6 +342,14 @@ class FlowBlockNodeView {
       return
     }
     emit('delete-flow-block', { blockIndex })
+  }
+
+  private readonly handleCut = () => {
+    const blockIndex = this.resolveCurrentBlockIndex()
+    if (blockIndex < 0) {
+      return
+    }
+    emit('cut-flow-block', { blockIndex })
   }
 
   private readonly handleMoveUp = () => {
@@ -411,6 +434,8 @@ onMounted(async () => {
       },
       { listener, listenerCtx },
       { history, undoCommand, redoCommand },
+      { cursor },
+      { trailing },
       { nord },
       utils
     ] = await Promise.all([
@@ -418,6 +443,8 @@ onMounted(async () => {
       import('@milkdown/kit/preset/commonmark'),
       import('@milkdown/kit/plugin/listener'),
       import('@milkdown/kit/plugin/history'),
+      import('@milkdown/kit/plugin/cursor'),
+      import('@milkdown/kit/plugin/trailing'),
       import('@milkdown/theme-nord'),
       import('@milkdown/kit/utils')
     ])
@@ -475,6 +502,8 @@ onMounted(async () => {
       .use(commonmark)
       .use(listener)
       .use(history)
+      .use(cursor)
+      .use(trailing)
       .create()
   } catch (error) {
     console.error('Milkdown init failed:', error)
@@ -775,6 +804,12 @@ defineExpose<MilkdownEditorHandle>({
   background: #f0fdf4;
   border-color: #0f766e;
   color: #0f766e;
+}
+
+:deep(.flow-nodeview-action.is-cut:hover) {
+  background: #f0f9ff;
+  border-color: #0c4a6e;
+  color: #0c4a6e;
 }
 
 :deep(.flow-nodeview-action.is-delete:hover) {

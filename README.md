@@ -105,7 +105,7 @@ onmyoji-wiki/
 ## 规划方向
 
 - 保持访客端为静态 Wiki（SEO 友好）
-- 在 `/admin` 路径集成 Milkdown 编辑器
+- 在 `/editor` 路径集成 Milkdown 编辑器
 - 通过插件方式接入 yys-editor 进行图编辑
 
 详细计划见 `docs/1management/plan.md`。
