@@ -20,6 +20,8 @@ type InlineFlowBlockMovePayload = {
 }
 
 export type MilkdownEditorHandle = {
+  isReady: () => boolean
+  focus: () => void
   toggleBold: () => void
   toggleItalic: () => void
   setHeading: (level: number) => void
@@ -54,10 +56,68 @@ let getMarkdown: (() => string) | null = null
 let replaceAll: ((markdown: string) => any) | null = null
 let insertMarkdown: ((markdown: string, inline?: boolean) => any) | null = null
 let callCommand: ((slice: any, payload?: any) => any) | null = null
-let commandExecutor: ((commandKey: any, payload?: unknown) => void) | null = null
+let commandExecutor: ((commandKey: any, payload?: unknown) => unknown) | null = null
 let internalPatch = false
 let lastMarkdownFromEditor: string | null = null
 const commandKeys: Record<string, any> = {}
+const DEBUG_MILKDOWN_COMMAND = true
+
+const resolveActiveElementInfo = (): string => {
+  if (typeof document === 'undefined') {
+    return 'no-document'
+  }
+  const active = document.activeElement as HTMLElement | null
+  if (!active) {
+    return 'none'
+  }
+  const className = typeof active.className === 'string' && active.className.trim()
+    ? `.${active.className.trim().replace(/\s+/g, '.')}`
+    : ''
+  const id = active.id ? `#${active.id}` : ''
+  return `${active.tagName}${id}${className}`
+}
+
+const isActiveInProseMirror = (proseMirror: HTMLElement | null): boolean => {
+  if (typeof document === 'undefined') {
+    return true
+  }
+  const active = document.activeElement as HTMLElement | null
+  if (!active) {
+    return false
+  }
+  if (proseMirror && active === proseMirror) {
+    return true
+  }
+  return !!active.closest('.ProseMirror')
+}
+
+const resolveCommandKey = (command: any): any => {
+  if (!command) {
+    return undefined
+  }
+  if (typeof command === 'string') {
+    return command
+  }
+  if (typeof command === 'function') {
+    return (command as { key?: unknown }).key
+  }
+  if (typeof command === 'object' && 'key' in command) {
+    return (command as { key?: unknown }).key
+  }
+  return undefined
+}
+
+const resolveCommandRunner = (command: any): ((payload?: unknown) => unknown) | null => {
+  if (!command || typeof command !== 'function') {
+    return null
+  }
+  const runner = (command as { run?: (payload?: unknown) => unknown }).run
+  return typeof runner === 'function' ? runner : null
+}
+
+const isCommandUsable = (command: any): boolean => {
+  return !!resolveCommandRunner(command) || !!resolveCommandKey(command)
+}
 
 const normalizeMarkdown = (value: string): string => value.replace(/\r\n/g, '\n')
 const EMPTY_GRAPH_DATA: GraphData = { nodes: [], edges: [] }
@@ -343,6 +403,7 @@ onMounted(async () => {
         commonmark,
         toggleStrongCommand,
         toggleEmphasisCommand,
+        turnIntoTextCommand,
         wrapInHeadingCommand,
         wrapInBulletListCommand,
         wrapInOrderedListCommand,
@@ -366,18 +427,19 @@ onMounted(async () => {
     insertMarkdown = (markdown: string, inline = false) => editor.action(utils.insert(markdown, inline))
     callCommand = utils.callCommand
     commandExecutor = (commandKey, payload) => {
-      editor.action((ctx: any) => {
-        ctx.get(commandsCtx).call(commandKey, payload)
+      return editor.action((ctx: any) => {
+        return ctx.get(commandsCtx).call(commandKey, payload)
       })
     }
-    commandKeys.bold = toggleStrongCommand.key
-    commandKeys.italic = toggleEmphasisCommand.key
-    commandKeys.heading = wrapInHeadingCommand.key
-    commandKeys.bulletList = wrapInBulletListCommand.key
-    commandKeys.orderedList = wrapInOrderedListCommand.key
-    commandKeys.codeBlock = createCodeBlockCommand.key
-    commandKeys.undo = undoCommand.key
-    commandKeys.redo = redoCommand.key
+    commandKeys.bold = toggleStrongCommand
+    commandKeys.italic = toggleEmphasisCommand
+    commandKeys.turnIntoText = turnIntoTextCommand
+    commandKeys.heading = wrapInHeadingCommand
+    commandKeys.bulletList = wrapInBulletListCommand
+    commandKeys.orderedList = wrapInOrderedListCommand
+    commandKeys.codeBlock = createCodeBlockCommand
+    commandKeys.undo = undoCommand
+    commandKeys.redo = redoCommand
 
     editor = await Editor.make()
       .config(nord)
@@ -450,30 +512,129 @@ onBeforeUnmount(() => {
   editor?.destroy?.()
 })
 
-const executeCommand = (commandKey: any, payload?: unknown) => {
-  if (!editor || !commandKey) {
+const executeCommand = (commandKey: any, payload?: unknown, retryCount = 0) => {
+  const commandRunner = resolveCommandRunner(commandKey)
+  const resolvedCommandKey = resolveCommandKey(commandKey)
+  if (!editor || (!commandRunner && !resolvedCommandKey)) {
+    if (DEBUG_MILKDOWN_COMMAND) {
+      console.warn('[milkdown command] skipped: editor or commandKey missing', {
+        retryCount,
+        commandKey,
+        resolvedCommandKey,
+        hasRunner: !!commandRunner
+      })
+    }
     return
   }
   const rootElement = root.value
   const proseMirror = rootElement?.querySelector('.ProseMirror') as HTMLElement | null
   proseMirror?.focus()
+  const activeInProseMirror = isActiveInProseMirror(proseMirror)
+  if (DEBUG_MILKDOWN_COMMAND) {
+    console.info('[milkdown command] start', {
+      retryCount,
+      commandKey: resolvedCommandKey,
+      payload,
+      hasRunner: !!commandRunner,
+      activeElement: resolveActiveElementInfo(),
+      proseMirrorFound: !!proseMirror,
+      activeInProseMirror
+    })
+  }
+  if (!activeInProseMirror) {
+    if (DEBUG_MILKDOWN_COMMAND) {
+      console.warn('[milkdown command] precondition failed: activeElement not in ProseMirror', {
+        retryCount,
+        activeElement: resolveActiveElementInfo()
+      })
+    }
+    if (retryCount < 2 && typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        executeCommand(commandKey, payload, retryCount + 1)
+      })
+    }
+    return
+  }
 
   const payloadCandidates = [payload]
   if (typeof payload === 'number') {
-    payloadCandidates.unshift({ level: payload })
+    payloadCandidates.length = 0
+    payloadCandidates.push(payload)
+    payloadCandidates.push({ level: payload })
   }
 
-  for (const candidate of payloadCandidates) {
-    try {
-      if (commandExecutor) {
-        commandExecutor(commandKey, candidate)
-      } else if (callCommand) {
-        editor.action(callCommand(commandKey, candidate))
+  const tryExecuteCandidates = (key: any): boolean => {
+    for (const candidate of payloadCandidates) {
+      try {
+        let result: unknown
+        if (commandRunner) {
+          result = commandRunner(candidate)
+        } else if (commandExecutor) {
+          result = commandExecutor(key, candidate)
+        } else if (callCommand) {
+          result = editor.action(callCommand(key, candidate))
+        } else {
+          if (DEBUG_MILKDOWN_COMMAND) {
+            console.warn('[milkdown command] no executor available')
+          }
+          continue
+        }
+        if (DEBUG_MILKDOWN_COMMAND) {
+          console.info('[milkdown command] candidate result', { key, candidate, result })
+        }
+        if (result === true) {
+          return true
+        }
+      } catch (error) {
+        if (DEBUG_MILKDOWN_COMMAND) {
+          console.warn('[milkdown command] candidate threw', { key, candidate, error })
+        }
       }
-      return
-    } catch {
-      // 尝试下一种参数形态
     }
+    return false
+  }
+
+  let succeeded = tryExecuteCandidates(resolvedCommandKey)
+  const headingKey = resolveCommandKey(commandKeys.heading)
+  const turnIntoTextKey = resolveCommandKey(commandKeys.turnIntoText)
+  const turnIntoTextRunner = resolveCommandRunner(commandKeys.turnIntoText)
+  if (!succeeded && resolvedCommandKey === headingKey && (turnIntoTextRunner || turnIntoTextKey)) {
+    if (DEBUG_MILKDOWN_COMMAND) {
+      console.warn('[milkdown command] heading fallback: turnIntoText then retry')
+    }
+    try {
+      if (turnIntoTextRunner) {
+        turnIntoTextRunner()
+      } else if (commandExecutor && turnIntoTextKey) {
+        commandExecutor(turnIntoTextKey)
+      } else if (callCommand && turnIntoTextKey) {
+        editor.action(callCommand(turnIntoTextKey))
+      }
+    } catch {
+      // 忽略转段落失败
+    }
+    succeeded = tryExecuteCandidates(resolvedCommandKey)
+  }
+
+  if (succeeded) {
+    if (DEBUG_MILKDOWN_COMMAND) {
+      console.info('[milkdown command] success', { commandKey: resolvedCommandKey, retryCount })
+    }
+    return
+  }
+
+  if (!succeeded && retryCount < 2 && typeof window !== 'undefined') {
+    if (DEBUG_MILKDOWN_COMMAND) {
+      console.warn('[milkdown command] retry on next frame', { commandKey: resolvedCommandKey, retryCount })
+    }
+    window.requestAnimationFrame(() => {
+      executeCommand(commandKey, payload, retryCount + 1)
+    })
+    return
+  }
+
+  if (DEBUG_MILKDOWN_COMMAND) {
+    console.warn('[milkdown command] failed', { commandKey: resolvedCommandKey, payload, retryCount })
   }
 }
 
@@ -482,6 +643,12 @@ const insertText = (text: string, inline = false) => {
     return
   }
   insertMarkdown(text, inline)
+}
+
+const focusEditor = () => {
+  const rootElement = root.value
+  const proseMirror = rootElement?.querySelector('.ProseMirror') as HTMLElement | null
+  proseMirror?.focus()
 }
 
 const insertFlowBlock = () => {
@@ -495,7 +662,34 @@ const getMarkdownContent = (): string => {
   return normalizeMarkdown(getMarkdown())
 }
 
+const isEditorReady = (): boolean => {
+  if (!editor || booting.value || !!bootError.value || !getMarkdown) {
+    return false
+  }
+  const requiredCommands = [
+    commandKeys.bold,
+    commandKeys.italic,
+    commandKeys.heading,
+    commandKeys.bulletList,
+    commandKeys.orderedList,
+    commandKeys.codeBlock,
+    commandKeys.undo,
+    commandKeys.redo
+  ]
+  if (requiredCommands.some((command) => !isCommandUsable(command))) {
+    return false
+  }
+  try {
+    getMarkdown()
+    return true
+  } catch {
+    return false
+  }
+}
+
 defineExpose<MilkdownEditorHandle>({
+  isReady: isEditorReady,
+  focus: focusEditor,
   toggleBold: () => executeCommand(commandKeys.bold),
   toggleItalic: () => executeCommand(commandKeys.italic),
   setHeading: (level: number) => executeCommand(commandKeys.heading, level),

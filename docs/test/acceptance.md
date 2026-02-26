@@ -25,18 +25,35 @@
 失败时排查：
 - `nuxt.config.ts` 的 `app.baseURL` 与 Actions 的 `NUXT_APP_BASE_URL` 是否一致。
 
-## 2. Milkdown 工具栏命令（加粗/斜体等）
+## 2. Milkdown 工具栏命令（加粗/斜体等）（已完成）
 
 步骤：
+- 先切换到“可视编辑”或“双栏”模式。
 - 在正文输入一段文字并选中。
 - 点击工具栏：加粗、斜体、H2、H3、无序列表、有序列表、代码块、撤销、重做。
 
 预期：
 - 所有命令生效，Markdown 输出正确变化。
+- H2/H3 会将当前段落设置为二/三级标题（对应 `##` / `###`）。
 
 失败时排查：
 - `components/editor/MilkdownEditor.client.vue` 的 `executeCommand(...)` 执行路径。
-- 确认 `.ProseMirror` 获取到且已 focus。
+- 先看 `[milkdown command] start`：若 `activeInProseMirror=false`，优先排查焦点未进入 `.ProseMirror`（首次进入常见）。
+- 再看 `candidate result / candidate threw`：确认是否 `commandsCtx.call(...)` 返回 `false` 或抛错。
+- `pages/editor.vue` 工具栏是否阻止了鼠标点击导致的选区丢失（`@mousedown` 处理）。
+
+## 12. 编辑视图切换（可视 / Markdown / 双栏）
+
+步骤：
+- 点击“视图模式”切换：可视编辑、Markdown、双栏。
+- 在 Markdown 模式修改源码，切到可视编辑确认内容保持一致。
+- 在双栏模式观察左侧 Markdown 与右侧可视编辑是否同步。
+
+预期：
+- 3 种模式都可切换且不报错。
+- Markdown 与可视编辑同步（模式切换后内容保持一致）。
+- 双栏模式下：左侧 Markdown 源码、右侧可视编辑。
+- 工具栏格式命令在“可视编辑 / 双栏”可用，在“Markdown”禁用。
 
 ## 3. 流程块插入、渲染与编辑
 
@@ -164,7 +181,7 @@
 
 ## 11. 回归清单（你本轮反馈的现象）
 
-- [ ] 工具栏加粗/斜体点击无效（必须验证修复与否）。
+- [x] 工具栏加粗/斜体点击无效（必须验证修复与否）。
 - [ ] 流程块在文档末尾导致无法把光标放到末尾并继续输入。
 - [ ] 流程块高度调整入口不明显或不生效。
 - [ ] 协作包导出后 Markdown 仍内联所有数据（应确认实现是否符合“引用”预期）。

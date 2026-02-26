@@ -35,6 +35,10 @@ type InlineFlowBlockMovePayload = {
   direction: 'up' | 'down'
 }
 
+type EditorViewMode = 'visual' | 'markdown' | 'split'
+const DEBUG_TOOLBAR = true
+const MAX_EDITOR_READY_RETRY = 30
+
 const DEFAULT_MARKDOWN = `# Onmyoji Wiki Editor
 
 欢迎使用所见即所得编辑器。
@@ -93,6 +97,7 @@ const flowModalBodyRef = ref<HTMLElement | null>(null)
 const flowEditorWidth = ref('100%')
 const flowEditorHeight = ref('600px')
 const milkdownRef = ref<MilkdownEditorHandle | null>(null)
+const editorViewMode = ref<EditorViewMode>('visual')
 const runtimeConfig = useRuntimeConfig()
 
 const importInput = ref<HTMLInputElement | null>(null)
@@ -173,6 +178,10 @@ const canSaveToFile = computed(() => (
 const canRefreshFiles = computed(() => (
   isFsSupported.value && fileSystemAdapter.hasDirectory()
 ))
+
+const showVisualPane = computed(() => editorViewMode.value === 'visual' || editorViewMode.value === 'split')
+const showMarkdownPane = computed(() => editorViewMode.value === 'markdown' || editorViewMode.value === 'split')
+const canUseVisualCommands = computed(() => showVisualPane.value)
 
 const updateFlowEditorViewportSize = () => {
   const host = flowModalBodyRef.value
@@ -379,6 +388,30 @@ const clearMessages = () => {
   operationError.value = ''
 }
 
+const resolveActiveElementInfo = (): string => {
+  if (typeof document === 'undefined') {
+    return 'no-document'
+  }
+  const active = document.activeElement as HTMLElement | null
+  if (!active) {
+    return 'none'
+  }
+  const className = typeof active.className === 'string' && active.className.trim()
+    ? `.${active.className.trim().replace(/\s+/g, '.')}`
+    : ''
+  const id = active.id ? `#${active.id}` : ''
+  return `${active.tagName}${id}${className}`
+}
+
+const setEditorViewMode = (mode: EditorViewMode) => {
+  clearMessages()
+  editorViewMode.value = mode
+}
+
+const preventToolbarMouseDown = (event: MouseEvent) => {
+  event.preventDefault()
+}
+
 const withErrorHandling = async (task: () => Promise<void>) => {
   clearMessages()
   try {
@@ -399,12 +432,47 @@ const ensureEditor = (): MilkdownEditorHandle | null => {
   return milkdownRef.value
 }
 
-const runEditorAction = (action: (editor: MilkdownEditorHandle) => void) => {
+const runEditorAction = (action: (editor: MilkdownEditorHandle) => void, retryCount = 0) => {
+  if (DEBUG_TOOLBAR) {
+    console.info('[editor toolbar] click', {
+      mode: editorViewMode.value,
+      retryCount,
+      activeElement: resolveActiveElementInfo()
+    })
+  }
   clearMessages()
-  const editor = ensureEditor()
-  if (!editor) {
+  if (!canUseVisualCommands.value) {
+    if (DEBUG_TOOLBAR) {
+      console.warn('[editor toolbar] blocked by mode', { mode: editorViewMode.value })
+    }
+    operationError.value = '请先切换到“可视编辑”或“双栏”模式再使用格式工具。'
     return
   }
+  const editor = ensureEditor()
+  if (!editor) {
+    if (DEBUG_TOOLBAR) {
+      console.warn('[editor toolbar] no editor instance')
+    }
+    return
+  }
+  if (!editor.isReady()) {
+    if (DEBUG_TOOLBAR) {
+      console.warn('[editor toolbar] editor not ready', { retryCount })
+    }
+    if (retryCount < MAX_EDITOR_READY_RETRY && typeof window !== 'undefined') {
+      window.setTimeout(() => runEditorAction(action, retryCount + 1), 120)
+      return
+    }
+    operationError.value = '编辑器正在初始化，请稍后再试。'
+    return
+  }
+  if (DEBUG_TOOLBAR) {
+    console.info('[editor toolbar] execute action', {
+      mode: editorViewMode.value,
+      activeElement: resolveActiveElementInfo()
+    })
+  }
+  editor.focus()
   action(editor)
 }
 
@@ -781,6 +849,17 @@ watch(flowEditorVisible, (visible) => {
   unlockBodyScroll()
 })
 
+watch(editorViewMode, async (mode) => {
+  if (mode !== 'visual' && mode !== 'split') {
+    return
+  }
+  await nextTick()
+  if (!milkdownRef.value?.isReady()) {
+    return
+  }
+  milkdownRef.value.focus()
+})
+
 onBeforeUnmount(() => {
   unlockBodyScroll()
   flowModalResizeObserver?.disconnect()
@@ -817,18 +896,25 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div class="editor-tools">
-        <button type="button" @click="runEditorAction((editor) => editor.toggleBold())"><strong>B</strong></button>
-        <button type="button" @click="runEditorAction((editor) => editor.toggleItalic())"><em>I</em></button>
-        <button type="button" @click="runEditorAction((editor) => editor.setHeading(2))">H2</button>
-        <button type="button" @click="runEditorAction((editor) => editor.setHeading(3))">H3</button>
-        <button type="button" @click="runEditorAction((editor) => editor.setBulletList())">无序列表</button>
-        <button type="button" @click="runEditorAction((editor) => editor.setOrderedList())">有序列表</button>
-        <button type="button" @click="runEditorAction((editor) => editor.setCodeBlock())">代码块</button>
-        <button type="button" @click="runEditorAction((editor) => editor.undo())">撤销</button>
-        <button type="button" @click="runEditorAction((editor) => editor.redo())">重做</button>
-        <button type="button" class="primary" @click="insertFlowBlock">插入流程块</button>
-        <button type="button" class="primary" @click="insertFlowHeightTestBlocks">插入高度测试块</button>
+      <div class="editor-tools" @mousedown="preventToolbarMouseDown">
+        <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.toggleBold())"><strong>B</strong></button>
+        <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.toggleItalic())"><em>I</em></button>
+        <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.setHeading(2))">H2</button>
+        <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.setHeading(3))">H3</button>
+        <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.setBulletList())">无序列表</button>
+        <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.setOrderedList())">有序列表</button>
+        <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.setCodeBlock())">代码块</button>
+        <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.undo())">撤销</button>
+        <button type="button" :disabled="!canUseVisualCommands" @click="runEditorAction((editor) => editor.redo())">重做</button>
+        <button type="button" class="primary" :disabled="!canUseVisualCommands" @click="insertFlowBlock">插入流程块</button>
+        <button type="button" class="primary" :disabled="!canUseVisualCommands" @click="insertFlowHeightTestBlocks">插入高度测试块</button>
+      </div>
+
+      <div class="view-switch">
+        <span>视图模式</span>
+        <button type="button" :class="{ active: editorViewMode === 'visual' }" @click="setEditorViewMode('visual')">可视编辑</button>
+        <button type="button" :class="{ active: editorViewMode === 'markdown' }" @click="setEditorViewMode('markdown')">Markdown</button>
+        <button type="button" :class="{ active: editorViewMode === 'split' }" @click="setEditorViewMode('split')">双栏</button>
       </div>
 
       <div class="capability">
@@ -855,8 +941,13 @@ onBeforeUnmount(() => {
       <p v-if="operationMessage" class="message">{{ operationMessage }}</p>
       <p v-if="operationError" class="error">{{ operationError }}</p>
 
-      <div class="workspace">
-        <section class="workspace-pane">
+      <div class="workspace" :class="`mode-${editorViewMode}`">
+        <section v-if="showMarkdownPane" class="workspace-pane">
+          <h2>Markdown 源码</h2>
+          <textarea v-model="markdown" class="markdown-source" spellcheck="false" />
+        </section>
+
+        <section v-if="showVisualPane" class="workspace-pane">
           <h2>所见即所得编辑</h2>
           <MilkdownEditor
             ref="milkdownRef"
@@ -1018,6 +1109,30 @@ onBeforeUnmount(() => {
   border-color: #cfd8e6;
 }
 
+.view-switch {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d8dde8;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #f8fafc;
+}
+
+.view-switch span {
+  font-size: 13px;
+  color: #334155;
+  margin-right: 2px;
+}
+
+.view-switch button.active {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: #fff;
+}
+
 .left,
 .right,
 .fsa-tools {
@@ -1096,13 +1211,32 @@ button:disabled {
 .workspace {
   margin-top: 16px;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
+}
+
+.workspace.mode-split {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.workspace-pane {
+  min-width: 0;
 }
 
 .workspace-pane h2 {
   margin: 0 0 10px;
   font-size: 16px;
+}
+
+.markdown-source {
+  width: 100%;
+  min-height: 520px;
+  border: 1px solid #d7dce8;
+  border-radius: 10px;
+  padding: 12px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  line-height: 1.5;
+  resize: vertical;
 }
 
 .flow-manager {
