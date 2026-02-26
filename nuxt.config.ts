@@ -4,15 +4,20 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: [
+        'yys-editor',
+        'element-plus',
+        'dayjs',
         '@logicflow/core',
         '@logicflow/extension',
         '@logicflow/vue-node-registry'
       ],
-      exclude: ['yys-editor']
+      exclude: []
     },
     ssr: {
       noExternal: [
         'yys-editor',
+        'element-plus',
+        'dayjs',
         '@logicflow/core',
         '@logicflow/extension',
         '@logicflow/vue-node-registry'
