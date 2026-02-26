@@ -3,13 +3,12 @@ import { computed, onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue'
 import MilkdownEditor, { type MilkdownEditorHandle } from '~/components/editor/MilkdownEditor.client.vue'
 import { YysEditorPreview } from 'yys-editor'
 import 'yys-editor/style.css'
+import JSZip from 'jszip'
 import { FileSystemEditorStorageAdapter } from '~/utils/editor-storage/file-system'
-import { LOCAL_STORAGE_KEY, LocalStorageEditorStorageAdapter } from '~/utils/editor-storage/local-storage'
-
-type GraphData = {
-  nodes: any[]
-  edges: any[]
-}
+import { LOCAL_STORAGE_BACKUP_KEY, LOCAL_STORAGE_KEY, LocalStorageEditorStorageAdapter } from '~/utils/editor-storage/local-storage'
+import { normalizeGraphData, type GraphData } from '~/utils/flow-preview'
+import { validateGraphGroupRules } from '~/utils/flow-rules'
+import { collectFlowAssetIssues } from '~/utils/flow-assets'
 
 type FlowBlock = {
   key: string
@@ -29,6 +28,11 @@ type InlineFlowBlockPayload = {
 
 type InlineFlowBlockDeletePayload = {
   blockIndex: number
+}
+
+type InlineFlowBlockMovePayload = {
+  blockIndex: number
+  direction: 'up' | 'down'
 }
 
 const DEFAULT_MARKDOWN = `# Onmyoji Wiki Editor
@@ -83,11 +87,13 @@ const savingToFile = ref(false)
 const flowEditorVisible = ref(false)
 const editingBlockIndex = ref<number | null>(null)
 const editingGraphData = ref<GraphData>(EMPTY_GRAPH_DATA)
+const editingPreviewHeight = ref(DEFAULT_FLOW_PREVIEW_HEIGHT)
 const flowEditorRef = ref<any>(null)
 const flowModalBodyRef = ref<HTMLElement | null>(null)
 const flowEditorWidth = ref('100%')
 const flowEditorHeight = ref('600px')
 const milkdownRef = ref<MilkdownEditorHandle | null>(null)
+const runtimeConfig = useRuntimeConfig()
 
 const importInput = ref<HTMLInputElement | null>(null)
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
@@ -167,30 +173,6 @@ const canSaveToFile = computed(() => (
 const canRefreshFiles = computed(() => (
   isFsSupported.value && fileSystemAdapter.hasDirectory()
 ))
-
-const normalizeGraphData = (input: any): GraphData => {
-  if (!input || typeof input !== 'object') {
-    return { nodes: [], edges: [] }
-  }
-
-  if (Array.isArray(input.fileList) && input.fileList.length > 0) {
-    const activeFileId = typeof input.activeFileId === 'string' ? input.activeFileId : ''
-    const activeIndex = input.fileList.findIndex((item: any) => item?.id === activeFileId)
-    const targetIndex = activeIndex >= 0 ? activeIndex : 0
-    const graphRawData = input.fileList[targetIndex]?.graphRawData
-    if (graphRawData && typeof graphRawData === 'object') {
-      return {
-        nodes: Array.isArray(graphRawData.nodes) ? graphRawData.nodes : [],
-        edges: Array.isArray(graphRawData.edges) ? graphRawData.edges : []
-      }
-    }
-  }
-
-  return {
-    nodes: Array.isArray(input.nodes) ? input.nodes : [],
-    edges: Array.isArray(input.edges) ? input.edges : []
-  }
-}
 
 const updateFlowEditorViewportSize = () => {
   const host = flowModalBodyRef.value
@@ -286,6 +268,23 @@ const parseFlowBlocks = (source: string): FlowBlock[] => {
 }
 
 const flowBlocks = computed(() => parseFlowBlocks(markdown.value))
+const flowRuleWarnings = computed(() => (
+  flowBlocks.value.flatMap((block) => (
+    validateGraphGroupRules(block.graphData).map((warning) => ({
+      ...warning,
+      blockIndex: block.blockIndex
+    }))
+  ))
+))
+const flowAssetWarnings = computed(() => {
+  const baseURL = runtimeConfig.app.baseURL || '/'
+  return flowBlocks.value.flatMap((block) => (
+    collectFlowAssetIssues(block.graphData, baseURL).map((issue) => ({
+      ...issue,
+      blockIndex: block.blockIndex
+    }))
+  ))
+})
 
 const replaceFlowBlock = (source: string, targetIndex: number, replacement: string): string => {
   const regex = new RegExp(FLOW_BLOCK_REGEX)
@@ -298,6 +297,39 @@ const replaceFlowBlock = (source: string, targetIndex: number, replacement: stri
     blockIndex += 1
     return fullMatch
   })
+}
+
+const collectFlowBlockMatches = (source: string): string[] => {
+  const regex = new RegExp(FLOW_BLOCK_REGEX)
+  const matches: string[] = []
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(source)) !== null) {
+    matches.push(match[0] || '')
+  }
+  return matches
+}
+
+const reorderFlowBlocks = (source: string, fromIndex: number, toIndex: number): string => {
+  if (fromIndex === toIndex) {
+    return source
+  }
+  const matches = collectFlowBlockMatches(source)
+  if (
+    fromIndex < 0
+    || toIndex < 0
+    || fromIndex >= matches.length
+    || toIndex >= matches.length
+  ) {
+    return source
+  }
+
+  const reordered = [...matches]
+  const [moved] = reordered.splice(fromIndex, 1)
+  reordered.splice(toIndex, 0, moved)
+
+  let replaceIndex = 0
+  const regex = new RegExp(FLOW_BLOCK_REGEX)
+  return source.replace(regex, () => reordered[replaceIndex++] || '')
 }
 
 const deepClone = <T>(input: T): T => {
@@ -324,6 +356,7 @@ const toFlowDemoLikePayload = (graphData: GraphData, previewHeight = DEFAULT_FLO
 const serializeFlowPayload = (rawPayload: any, graphData: GraphData, previewHeight = DEFAULT_FLOW_PREVIEW_HEIGHT): string => {
   if (rawPayload && typeof rawPayload === 'object' && Array.isArray(rawPayload.fileList) && rawPayload.fileList.length > 0) {
     const nextPayload = deepClone(rawPayload) as Record<string, any>
+    nextPayload.height = previewHeight
     const fileList = Array.isArray(nextPayload.fileList) ? nextPayload.fileList : []
     const activeFileId = typeof nextPayload.activeFileId === 'string' ? nextPayload.activeFileId : ''
     const activeIndex = fileList.findIndex((item: any) => item?.id === activeFileId)
@@ -401,6 +434,7 @@ const resetToDefaultTemplate = () => {
   markdown.value = DEFAULT_MARKDOWN
   if (typeof window !== 'undefined') {
     localStorage.removeItem(LOCAL_STORAGE_KEY)
+    localStorage.removeItem(LOCAL_STORAGE_BACKUP_KEY)
   }
   autosaveLabel.value = '已重置，等待自动保存'
   operationMessage.value = '已重置为默认模板，并清除 localStorage 草稿。'
@@ -410,6 +444,7 @@ const openFlowBlockEditor = (block: FlowBlock) => {
   clearMessages()
   editingBlockIndex.value = block.blockIndex
   editingGraphData.value = JSON.parse(JSON.stringify(block.graphData))
+  editingPreviewHeight.value = block.previewHeight
   if (block.error) {
     operationMessage.value = `${block.error} 打开后可重新编辑并保存。`
   }
@@ -440,9 +475,58 @@ const handleInlineFlowBlockDelete = (payload: InlineFlowBlockDeletePayload) => {
   removeFlowBlock(payload.blockIndex)
 }
 
+const moveFlowBlock = (blockIndex: number, direction: 'up' | 'down') => {
+  const targetIndex = direction === 'up' ? blockIndex - 1 : blockIndex + 1
+  const total = flowBlocks.value.length
+  if (targetIndex < 0 || targetIndex >= total) {
+    return
+  }
+
+  markdown.value = reorderFlowBlocks(markdown.value, blockIndex, targetIndex)
+  if (editingBlockIndex.value === blockIndex) {
+    editingBlockIndex.value = targetIndex
+  } else if (editingBlockIndex.value === targetIndex) {
+    editingBlockIndex.value = blockIndex
+  }
+  operationMessage.value = `流程块 #${blockIndex + 1} 已${direction === 'up' ? '上移' : '下移'}。`
+}
+
+const handleInlineFlowBlockMove = (payload: InlineFlowBlockMovePayload) => {
+  clearMessages()
+  moveFlowBlock(payload.blockIndex, payload.direction)
+}
+
+const updateFlowBlockHeight = (blockIndex: number, nextHeight: number) => {
+  const block = flowBlocks.value.find((item) => item.blockIndex === blockIndex)
+  if (!block) {
+    return
+  }
+
+  const normalizedHeight = Number.isFinite(nextHeight) ? Math.max(120, Math.min(2000, Math.round(nextHeight))) : DEFAULT_FLOW_PREVIEW_HEIGHT
+  const graphData = normalizeGraphData(block.graphData)
+  const rawPayload = block.rawPayload && typeof block.rawPayload === 'object'
+    ? deepClone(block.rawPayload)
+    : toFlowDemoLikePayload(graphData, normalizedHeight)
+  const flowPayload = serializeFlowPayload(rawPayload, graphData, normalizedHeight)
+  const serialized = `\`\`\`yys-flow\n${flowPayload}\n\`\`\``
+  markdown.value = replaceFlowBlock(markdown.value, blockIndex, serialized)
+
+  if (editingBlockIndex.value === blockIndex) {
+    editingPreviewHeight.value = normalizedHeight
+  }
+  operationMessage.value = `流程块 #${blockIndex + 1} 高度已更新为 ${normalizedHeight}px。`
+}
+
+const onFlowHeightInputChange = (blockIndex: number, event: Event) => {
+  const target = event.target as HTMLInputElement | null
+  const value = target ? Number(target.value) : NaN
+  updateFlowBlockHeight(blockIndex, value)
+}
+
 const closeFlowBlockEditor = () => {
   flowEditorVisible.value = false
   editingBlockIndex.value = null
+  editingPreviewHeight.value = DEFAULT_FLOW_PREVIEW_HEIGHT
 }
 
 const waitForEditorFlush = async () => {
@@ -467,8 +551,12 @@ const applyFlowBlockChanges = async () => {
 
   const graphData = flowEditorRef.value?.getGraphData?.()
   const normalizedGraphData = normalizeGraphData(graphData)
+  const normalizedPreviewHeight = Number.isFinite(editingPreviewHeight.value)
+    ? Math.max(120, Math.min(2000, Math.round(editingPreviewHeight.value)))
+    : DEFAULT_FLOW_PREVIEW_HEIGHT
+  editingPreviewHeight.value = normalizedPreviewHeight
   const currentBlock = flowBlocks.value.find((item) => item.blockIndex === editingBlockIndex.value) || null
-  const flowPayload = serializeFlowPayload(currentBlock?.rawPayload, normalizedGraphData, currentBlock?.previewHeight ?? DEFAULT_FLOW_PREVIEW_HEIGHT)
+  const flowPayload = serializeFlowPayload(currentBlock?.rawPayload, normalizedGraphData, normalizedPreviewHeight)
   const serialized = `\`\`\`yys-flow\n${flowPayload}\n\`\`\``
   markdown.value = replaceFlowBlock(markdown.value, editingBlockIndex.value, serialized)
   flowEditorVisible.value = false
@@ -534,8 +622,21 @@ const triggerImport = () => {
   importInput.value?.click()
 }
 
-const parseImportedContent = (name: string, text: string): string => {
-  if (name.toLowerCase().endsWith('.json')) {
+const parseImportedContent = async (file: File): Promise<string> => {
+  const lowerName = file.name.toLowerCase()
+  if (lowerName.endsWith('.zip')) {
+    const zip = await JSZip.loadAsync(await file.arrayBuffer())
+    const primaryEntry = zip.file('wiki-editor.md')
+    const fallbackEntry = zip.file(/\.md$/i)[0]
+    const targetEntry = primaryEntry || fallbackEntry
+    if (!targetEntry) {
+      throw new Error('zip 中未找到可导入的 markdown 文件。')
+    }
+    return targetEntry.async('string')
+  }
+
+  const text = await file.text()
+  if (lowerName.endsWith('.json')) {
     const parsed = JSON.parse(text) as Record<string, unknown>
     if (typeof parsed.markdown === 'string') {
       return parsed.markdown
@@ -558,8 +659,7 @@ const handleImport = async (event: Event) => {
 
   importing.value = true
   await withErrorHandling(async () => {
-    const text = await file.text()
-    markdown.value = parseImportedContent(file.name, text)
+    markdown.value = await parseImportedContent(file)
     operationMessage.value = `已导入 ${file.name}。`
     activeMode.value = 'local-storage'
   })
@@ -591,6 +691,44 @@ const exportJson = () => {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
   downloadBlob(blob, 'wiki-editor.json')
   operationMessage.value = '已导出 JSON 文件。'
+}
+
+const exportBundleZip = async () => {
+  await withErrorHandling(async () => {
+    const zip = new JSZip()
+    const exportedAt = new Date().toISOString()
+    const blockManifest: Array<Record<string, unknown>> = []
+
+    zip.file('wiki-editor.md', markdown.value)
+
+    flowBlocks.value.forEach((block) => {
+      const payload = block.rawPayload && typeof block.rawPayload === 'object'
+        ? deepClone(block.rawPayload)
+        : toFlowDemoLikePayload(block.graphData, block.previewHeight)
+      if (!('height' in payload)) {
+        payload.height = block.previewHeight
+      }
+      const fileName = `flows/flow-${block.blockIndex + 1}.json`
+      zip.file(fileName, JSON.stringify(payload, null, 2))
+      blockManifest.push({
+        blockIndex: block.blockIndex,
+        height: block.previewHeight,
+        file: fileName,
+        hasParseError: !!block.error
+      })
+    })
+
+    zip.file('manifest.json', JSON.stringify({
+      version: 1,
+      exportedAt,
+      flowBlockCount: flowBlocks.value.length,
+      files: blockManifest
+    }, null, 2))
+
+    const blob = await zip.generateAsync({ type: 'blob' })
+    downloadBlob(blob, `wiki-editor-bundle-${Date.now()}.zip`)
+    operationMessage.value = '已导出协作包（zip）。'
+  })
 }
 
 onMounted(async () => {
@@ -670,6 +808,7 @@ onBeforeUnmount(() => {
           <button type="button" @click="triggerImport">导入 markdown/json</button>
           <button type="button" @click="exportMarkdown">导出 markdown</button>
           <button type="button" @click="exportJson">导出 json</button>
+          <button type="button" @click="exportBundleZip">导出协作包(zip)</button>
           <button type="button" @click="resetToDefaultTemplate">重置默认模板</button>
         </div>
         <div class="right">
@@ -724,6 +863,7 @@ onBeforeUnmount(() => {
             v-model="markdown"
             @open-flow-block="handleInlineFlowBlockEdit"
             @delete-flow-block="handleInlineFlowBlockDelete"
+            @move-flow-block="handleInlineFlowBlockMove"
           />
         </section>
       </div>
@@ -734,6 +874,22 @@ onBeforeUnmount(() => {
           <span class="flow-count">{{ flowBlocks.length }} 个</span>
         </header>
         <p class="flow-manager-tip">流程块已支持在正文内直接渲染与编辑，下方列表用于快速定位和兜底管理。</p>
+        <div v-if="flowRuleWarnings.length" class="flow-rule-warnings">
+          <strong>规则检查提示（按分组）</strong>
+          <ul>
+            <li v-for="(warning, index) in flowRuleWarnings" :key="`${warning.blockIndex}-${warning.groupId}-${warning.code}-${index}`">
+              块 #{{ warning.blockIndex + 1 }} [{{ warning.groupId }}] {{ warning.message }}
+            </li>
+          </ul>
+        </div>
+        <div v-if="flowAssetWarnings.length" class="flow-rule-warnings">
+          <strong>资产兼容提示</strong>
+          <ul>
+            <li v-for="(warning, index) in flowAssetWarnings" :key="`${warning.blockIndex}-${warning.code}-${index}`">
+              块 #{{ warning.blockIndex + 1 }} {{ warning.message }}
+            </li>
+          </ul>
+        </div>
 
         <div v-if="flowBlocks.length === 0" class="flow-empty">
           暂无流程块，点击上方“插入流程块”即可创建。
@@ -743,10 +899,23 @@ onBeforeUnmount(() => {
           <article v-for="block in flowBlocks" :key="block.key" class="flow-row">
 	            <div class="flow-row-main">
 	              <strong>流程块 #{{ block.blockIndex + 1 }}</strong>
-	              <p class="flow-meta">预览高度: {{ block.previewHeight }}</p>
+	              <p class="flow-meta">
+                  预览高度:
+                  <input
+                    type="number"
+                    min="120"
+                    max="2000"
+                    step="10"
+                    class="flow-height-input"
+                    :value="block.previewHeight"
+                    @change="onFlowHeightInputChange(block.blockIndex, $event)"
+                  >
+                </p>
 	              <p v-if="block.error" class="flow-error">{{ block.error }}</p>
 	            </div>
             <div class="flow-row-actions">
+              <button type="button" :disabled="block.blockIndex === 0" @click="moveFlowBlock(block.blockIndex, 'up')">上移</button>
+              <button type="button" :disabled="block.blockIndex === flowBlocks.length - 1" @click="moveFlowBlock(block.blockIndex, 'down')">下移</button>
               <button type="button" @click="openFlowBlockEditor(block)">编辑</button>
               <button type="button" class="danger" @click="removeFlowBlock(block.blockIndex)">删除</button>
             </div>
@@ -761,6 +930,16 @@ onBeforeUnmount(() => {
         <header class="flow-modal-header">
           <h3>编辑流程块 #{{ (editingBlockIndex ?? 0) + 1 }}</h3>
           <div class="flow-modal-actions">
+            <label class="flow-modal-height">
+              高度
+              <input
+                v-model.number="editingPreviewHeight"
+                type="number"
+                min="120"
+                max="2000"
+                step="10"
+              >
+            </label>
             <button type="button" @click="closeFlowBlockEditor">取消</button>
             <button type="button" class="primary" @click="applyFlowBlockChanges">应用到块</button>
           </div>
@@ -786,7 +965,7 @@ onBeforeUnmount(() => {
     <input
       ref="importInput"
       type="file"
-      accept=".md,.markdown,.json,text/markdown,application/json"
+      accept=".md,.markdown,.json,.zip,text/markdown,application/json,application/zip"
       class="hidden-input"
       @change="handleImport"
     >
@@ -835,6 +1014,8 @@ onBeforeUnmount(() => {
 
 .editor-tools {
   justify-content: flex-start;
+  background: #f3f4f6;
+  border-color: #cfd8e6;
 }
 
 .left,
@@ -862,6 +1043,14 @@ input {
 
 button {
   cursor: pointer;
+}
+
+.editor-tools button {
+  min-width: 42px;
+  height: 34px;
+  padding: 6px 10px;
+  border-color: #c9d3e0;
+  background: #ffffff;
 }
 
 button.primary {
@@ -947,6 +1136,21 @@ button:disabled {
   font-size: 13px;
 }
 
+.flow-rule-warnings {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 13px;
+}
+
+.flow-rule-warnings ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
 .flow-empty {
   margin-top: 10px;
   padding: 10px;
@@ -986,6 +1190,11 @@ button:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.flow-height-input {
+  width: 110px;
+  margin-left: 6px;
 }
 
 button.danger {
@@ -1067,7 +1276,20 @@ button.danger:hover {
 
 .flow-modal-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
+}
+
+.flow-modal-height {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.flow-modal-height input {
+  width: 96px;
 }
 
 .hidden-input {
