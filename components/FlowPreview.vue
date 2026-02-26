@@ -3,11 +3,8 @@ import { computed, ref, watch } from 'vue'
 import { joinURL } from 'ufo'
 import { YysEditorPreview } from 'yys-editor'
 import 'yys-editor/style.css'
-
-type GraphData = {
-  nodes: any[]
-  edges: any[]
-}
+import { normalizeGraphData, normalizeGraphForPreview, type GraphData } from '~/utils/flow-preview'
+import { collectFlowAssetIssues, rewriteFlowAssetUrls, type AssetRenderPolicy } from '~/utils/flow-assets'
 
 type FlowCapabilityLevel = 'render-only' | 'interactive'
 
@@ -17,17 +14,21 @@ const props = withDefaults(defineProps<{
   height?: number | string
   showMiniMap?: boolean
   capability?: FlowCapabilityLevel
+  assetPolicy?: AssetRenderPolicy
 }>(), {
   data: () => ({ nodes: [], edges: [] }),
   src: '',
   height: 400,
-  showMiniMap: false
+  showMiniMap: false,
+  assetPolicy: 'degrade'
 })
 
 const flowData = ref<GraphData>({ nodes: [], edges: [] })
 const loading = ref(false)
 const errorMessage = ref('')
+const assetIssueMessage = ref('')
 const runtimeConfig = useRuntimeConfig()
+const baseURL = computed(() => runtimeConfig.app.baseURL || '/')
 const resolvedCapability = computed<FlowCapabilityLevel>(() => {
   return props.capability || 'render-only'
 })
@@ -40,58 +41,27 @@ const resolveSrcUrl = (src: string) => {
     return src
   }
   if (src.startsWith('/')) {
-    return joinURL(runtimeConfig.app.baseURL || '/', src.slice(1))
+    return joinURL(baseURL.value, src.slice(1))
   }
   return src
 }
 
-const resolveAssetUrl = (url: string) => {
-  if (!url.startsWith('/assets/')) {
-    return url
-  }
-  return joinURL(runtimeConfig.app.baseURL || '/', url.slice(1))
-}
-
-const rewriteAssetUrls = (input: any): any => {
-  if (typeof input === 'string') {
-    return resolveAssetUrl(input)
-  }
-  if (Array.isArray(input)) {
-    return input.map((item) => rewriteAssetUrls(item))
-  }
-  if (input && typeof input === 'object') {
-    const output: Record<string, any> = {}
-    for (const [key, value] of Object.entries(input)) {
-      output[key] = rewriteAssetUrls(value)
-    }
-    return output
-  }
-  return input
-}
-
-const normalizeData = (input: any): GraphData => {
-  if (!input || typeof input !== 'object') {
-    return { nodes: [], edges: [] }
-  }
-
-  if (Array.isArray(input.fileList) && input.fileList.length > 0) {
-    const graphRawData = input.fileList[0]?.graphRawData
-    if (graphRawData && typeof graphRawData === 'object') {
-      return {
-        nodes: Array.isArray(graphRawData.nodes) ? graphRawData.nodes : [],
-        edges: Array.isArray(graphRawData.edges) ? graphRawData.edges : []
-      }
-    }
-  }
-
-  return {
-    nodes: Array.isArray(input.nodes) ? input.nodes : [],
-    edges: Array.isArray(input.edges) ? input.edges : []
-  }
-}
-
 const applyData = (data: any) => {
-  flowData.value = rewriteAssetUrls(normalizeData(data))
+  errorMessage.value = ''
+  const normalized = normalizeGraphData(data)
+  const issues = collectFlowAssetIssues(normalized, baseURL.value)
+  if (issues.length > 0) {
+    assetIssueMessage.value = issues[0]?.message || '检测到资产路径兼容问题。'
+    if (props.assetPolicy === 'strict') {
+      errorMessage.value = assetIssueMessage.value
+      flowData.value = { nodes: [], edges: [] }
+      return
+    }
+  } else {
+    assetIssueMessage.value = ''
+  }
+
+  flowData.value = rewriteFlowAssetUrls(normalizeGraphForPreview(normalized), baseURL.value, props.assetPolicy)
 }
 
 const loadFromSrc = async (src: string) => {
@@ -162,8 +132,9 @@ const exportData = () => {
     <div class="flow-preview-wrapper">
       <div v-if="loading" class="loading">加载中...</div>
       <div v-else-if="errorMessage" class="error">{{ errorMessage }}</div>
+      <div v-else-if="assetIssueMessage" class="asset-warning">{{ assetIssueMessage }}（已采用兼容渲染）</div>
       <YysEditorPreview
-        v-else
+        v-if="!loading && !errorMessage"
         ref="previewRef"
         mode="preview"
         :capability="resolvedCapability"
@@ -215,6 +186,13 @@ const exportData = () => {
   padding: 40px;
   text-align: center;
   color: #c62828;
+}
+
+.asset-warning {
+  padding: 10px 12px;
+  background: #fff7ed;
+  color: #9a3412;
+  border-bottom: 1px solid #fed7aa;
 }
 
 .flow-actions {

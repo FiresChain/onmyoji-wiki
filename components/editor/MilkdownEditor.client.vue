@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { h, nextTick, onBeforeUnmount, onMounted, ref, render, shallowRef, watch } from 'vue'
 import '@milkdown/theme-nord/style.css'
-
-type GraphData = {
-  nodes: any[]
-  edges: any[]
-}
+import { normalizeGraphForPreview, normalizeGraphData, type GraphData } from '~/utils/flow-preview'
 
 type InlineFlowBlockPayload = {
   blockIndex: number
@@ -16,6 +12,11 @@ type InlineFlowBlockPayload = {
 
 type InlineFlowBlockDeletePayload = {
   blockIndex: number
+}
+
+type InlineFlowBlockMovePayload = {
+  blockIndex: number
+  direction: 'up' | 'down'
 }
 
 export type MilkdownEditorHandle = {
@@ -40,6 +41,7 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: string): void
   (event: 'open-flow-block', payload: InlineFlowBlockPayload): void
   (event: 'delete-flow-block', payload: InlineFlowBlockDeletePayload): void
+  (event: 'move-flow-block', payload: InlineFlowBlockMovePayload): void
 }>()
 
 const root = ref<HTMLDivElement | null>(null)
@@ -52,6 +54,7 @@ let getMarkdown: (() => string) | null = null
 let replaceAll: ((markdown: string) => any) | null = null
 let insertMarkdown: ((markdown: string, inline?: boolean) => any) | null = null
 let callCommand: ((slice: any, payload?: any) => any) | null = null
+let commandExecutor: ((commandKey: any, payload?: unknown) => void) | null = null
 let internalPatch = false
 let lastMarkdownFromEditor: string | null = null
 const commandKeys: Record<string, any> = {}
@@ -59,30 +62,6 @@ const commandKeys: Record<string, any> = {}
 const normalizeMarkdown = (value: string): string => value.replace(/\r\n/g, '\n')
 const EMPTY_GRAPH_DATA: GraphData = { nodes: [], edges: [] }
 const DEFAULT_FLOW_PREVIEW_HEIGHT = 260
-
-const normalizeGraphData = (input: any): GraphData => {
-  if (!input || typeof input !== 'object') {
-    return { nodes: [], edges: [] }
-  }
-
-  if (Array.isArray(input.fileList) && input.fileList.length > 0) {
-    const activeFileId = typeof input.activeFileId === 'string' ? input.activeFileId : ''
-    const activeIndex = input.fileList.findIndex((item: any) => item?.id === activeFileId)
-    const targetIndex = activeIndex >= 0 ? activeIndex : 0
-    const graphRawData = input.fileList[targetIndex]?.graphRawData
-    if (graphRawData && typeof graphRawData === 'object') {
-      return {
-        nodes: Array.isArray(graphRawData.nodes) ? graphRawData.nodes : [],
-        edges: Array.isArray(graphRawData.edges) ? graphRawData.edges : []
-      }
-    }
-  }
-
-  return {
-    nodes: Array.isArray(input.nodes) ? input.nodes : [],
-    edges: Array.isArray(input.edges) ? input.edges : []
-  }
-}
 
 const resolvePreviewHeight = (input: any, fallback = DEFAULT_FLOW_PREVIEW_HEIGHT): number => {
   if (!input || typeof input !== 'object') {
@@ -155,7 +134,7 @@ const resolveFlowBlockIndex = (doc: any, targetPos: number): number => {
       return false
     }
     blockIndex += 1
-    return false
+    return true
   })
   return foundIndex
 }
@@ -167,6 +146,8 @@ class FlowBlockNodeView {
   private readonly actionsNode: HTMLDivElement
   private readonly editButton: HTMLButtonElement
   private readonly deleteButton: HTMLButtonElement
+  private readonly moveUpButton: HTMLButtonElement
+  private readonly moveDownButton: HTMLButtonElement
   private node: any
   private readonly view: any
   private readonly getPos: boolean | (() => number | undefined)
@@ -194,6 +175,20 @@ class FlowBlockNodeView {
     this.deleteButton.textContent = '删除'
     this.deleteButton.addEventListener('click', this.handleDelete)
 
+    this.moveUpButton = document.createElement('button')
+    this.moveUpButton.type = 'button'
+    this.moveUpButton.className = 'flow-nodeview-action'
+    this.moveUpButton.textContent = '上移'
+    this.moveUpButton.addEventListener('click', this.handleMoveUp)
+
+    this.moveDownButton = document.createElement('button')
+    this.moveDownButton.type = 'button'
+    this.moveDownButton.className = 'flow-nodeview-action'
+    this.moveDownButton.textContent = '下移'
+    this.moveDownButton.addEventListener('click', this.handleMoveDown)
+
+    this.actionsNode.appendChild(this.moveUpButton)
+    this.actionsNode.appendChild(this.moveDownButton)
     this.actionsNode.appendChild(this.editButton)
     this.actionsNode.appendChild(this.deleteButton)
     this.previewHost = document.createElement('div')
@@ -238,6 +233,8 @@ class FlowBlockNodeView {
   destroy() {
     this.editButton.removeEventListener('click', this.handleEdit)
     this.deleteButton.removeEventListener('click', this.handleDelete)
+    this.moveUpButton.removeEventListener('click', this.handleMoveUp)
+    this.moveDownButton.removeEventListener('click', this.handleMoveDown)
     render(null, this.previewHost)
   }
 
@@ -272,6 +269,22 @@ class FlowBlockNodeView {
     emit('delete-flow-block', { blockIndex })
   }
 
+  private readonly handleMoveUp = () => {
+    const blockIndex = this.resolveCurrentBlockIndex()
+    if (blockIndex < 0) {
+      return
+    }
+    emit('move-flow-block', { blockIndex, direction: 'up' })
+  }
+
+  private readonly handleMoveDown = () => {
+    const blockIndex = this.resolveCurrentBlockIndex()
+    if (blockIndex < 0) {
+      return
+    }
+    emit('move-flow-block', { blockIndex, direction: 'down' })
+  }
+
   private renderNode(node: any) {
     const rawText = node?.textContent ?? ''
     const parsed = parseFlowGraphData(rawText)
@@ -293,7 +306,7 @@ class FlowBlockNodeView {
         key: previewKey,
         mode: 'preview',
         capability: 'render-only',
-        data: parsed.graphData,
+        data: normalizeGraphForPreview(parsed.graphData),
         height: parsed.previewHeight
       }),
       this.previewHost
@@ -325,7 +338,7 @@ onMounted(async () => {
     }
 
     const [
-      { Editor, rootCtx, defaultValueCtx, nodeViewCtx },
+      { Editor, rootCtx, defaultValueCtx, nodeViewCtx, commandsCtx },
       {
         commonmark,
         toggleStrongCommand,
@@ -352,6 +365,11 @@ onMounted(async () => {
     replaceAll = (markdown: string) => editor.action(utils.replaceAll(markdown))
     insertMarkdown = (markdown: string, inline = false) => editor.action(utils.insert(markdown, inline))
     callCommand = utils.callCommand
+    commandExecutor = (commandKey, payload) => {
+      editor.action((ctx: any) => {
+        ctx.get(commandsCtx).call(commandKey, payload)
+      })
+    }
     commandKeys.bold = toggleStrongCommand.key
     commandKeys.italic = toggleEmphasisCommand.key
     commandKeys.heading = wrapInHeadingCommand.key
@@ -433,10 +451,30 @@ onBeforeUnmount(() => {
 })
 
 const executeCommand = (commandKey: any, payload?: unknown) => {
-  if (!editor || !callCommand || !commandKey) {
+  if (!editor || !commandKey) {
     return
   }
-  editor.action(callCommand(commandKey, payload))
+  const rootElement = root.value
+  const proseMirror = rootElement?.querySelector('.ProseMirror') as HTMLElement | null
+  proseMirror?.focus()
+
+  const payloadCandidates = [payload]
+  if (typeof payload === 'number') {
+    payloadCandidates.unshift({ level: payload })
+  }
+
+  for (const candidate of payloadCandidates) {
+    try {
+      if (commandExecutor) {
+        commandExecutor(commandKey, candidate)
+      } else if (callCommand) {
+        editor.action(callCommand(commandKey, candidate))
+      }
+      return
+    } catch {
+      // 尝试下一种参数形态
+    }
+  }
 }
 
 const insertText = (text: string, inline = false) => {
