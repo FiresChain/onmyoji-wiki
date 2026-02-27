@@ -9,6 +9,13 @@ import { LOCAL_STORAGE_BACKUP_KEY, LOCAL_STORAGE_KEY, LocalStorageEditorStorageA
 import { normalizeGraphData, type GraphData } from '~/utils/flow-preview'
 import { validateGraphGroupRules } from '~/utils/flow-rules'
 import { collectFlowAssetIssues } from '~/utils/flow-assets'
+import {
+  ONMYOJI_EDITOR_BLOCK_REGEX,
+  ONMYOJI_EDITOR_LANGUAGE,
+  buildOnmyojiEditorBlockFence,
+  buildOnmyojiEditorFileFence,
+  parseOnmyojiEditorFenceInfo
+} from '~/utils/onmyoji-editor-syntax'
 
 type FlowBlock = {
   key: string
@@ -39,6 +46,12 @@ type InlineFlowBlockMovePayload = {
   direction: 'up' | 'down'
 }
 
+type FlowBundleReference = {
+  blockIndex: number
+  filePath: string
+  previewHeight: number
+}
+
 type EditorViewMode = 'visual' | 'markdown' | 'split'
 const DEBUG_TOOLBAR = true
 const MAX_EDITOR_READY_RETRY = 30
@@ -55,7 +68,7 @@ const DEFAULT_MARKDOWN = `# Onmyoji Wiki Editor
 `
 
 const EMPTY_GRAPH_DATA: GraphData = { nodes: [], edges: [] }
-const FLOW_BLOCK_REGEX = /```yys-flow[^\r\n]*\r?\n([\s\S]*?)```/g
+const FLOW_BLOCK_REGEX = ONMYOJI_EDITOR_BLOCK_REGEX
 const DEFAULT_FLOW_PREVIEW_HEIGHT = 260
 const FLOW_HEIGHT_TEST_GRAPH_DATA: GraphData = {
   nodes: [
@@ -257,6 +270,11 @@ const parseFlowBlock = (raw: string): { data: GraphData; rawPayload: any; previe
   }
 }
 
+const isOnmyojiBlockFenceHeader = (header: string): boolean => {
+  const info = parseOnmyojiEditorFenceInfo(`${ONMYOJI_EDITOR_LANGUAGE}${header || ''}`)
+  return info.isOnmyojiEditor && info.type === 'block'
+}
+
 const parseFlowBlocks = (source: string): FlowBlock[] => {
   const blocks: FlowBlock[] = []
   const regex = new RegExp(FLOW_BLOCK_REGEX)
@@ -264,7 +282,11 @@ const parseFlowBlocks = (source: string): FlowBlock[] => {
   let match: RegExpExecArray | null
 
   while ((match = regex.exec(source)) !== null) {
-    const raw = (match[1] || '').trim()
+    const header = match[1] || ''
+    if (!isOnmyojiBlockFenceHeader(header)) {
+      continue
+    }
+    const raw = (match[2] || '').trim()
     const parsed = parseFlowBlock(raw)
 
     blocks.push({
@@ -304,7 +326,10 @@ const flowAssetWarnings = computed(() => {
 const replaceFlowBlock = (source: string, targetIndex: number, replacement: string): string => {
   const regex = new RegExp(FLOW_BLOCK_REGEX)
   let blockIndex = 0
-  return source.replace(regex, (fullMatch) => {
+  return source.replace(regex, (fullMatch, header: string) => {
+    if (!isOnmyojiBlockFenceHeader(header || '')) {
+      return fullMatch
+    }
     if (blockIndex === targetIndex) {
       blockIndex += 1
       return replacement
@@ -319,6 +344,10 @@ const collectFlowBlockMatches = (source: string): string[] => {
   const matches: string[] = []
   let match: RegExpExecArray | null
   while ((match = regex.exec(source)) !== null) {
+    const header = match[1] || ''
+    if (!isOnmyojiBlockFenceHeader(header)) {
+      continue
+    }
     matches.push(match[0] || '')
   }
   return matches
@@ -352,7 +381,12 @@ const reorderFlowBlocks = (source: string, fromIndex: number, toIndex: number): 
 
   let replaceIndex = 0
   const regex = new RegExp(FLOW_BLOCK_REGEX)
-  return source.replace(regex, () => reordered[replaceIndex++] || '')
+  return source.replace(regex, (fullMatch, header: string) => {
+    if (!isOnmyojiBlockFenceHeader(header || '')) {
+      return fullMatch
+    }
+    return reordered[replaceIndex++] || ''
+  })
 }
 
 const deepClone = <T>(input: T): T => {
@@ -395,6 +429,116 @@ const serializeFlowPayload = (rawPayload: any, graphData: GraphData, previewHeig
 
   const normalizedPayload = toFlowDemoLikePayload(graphData, previewHeight)
   return JSON.stringify(normalizedPayload, null, 2)
+}
+
+const wrapFlowPayloadCodeBlock = (payload: string): string => (
+  buildOnmyojiEditorBlockFence(payload)
+)
+
+const buildFlowPreviewReferenceBlock = (filePath: string, previewHeight: number): string => (
+  buildOnmyojiEditorFileFence(`./${filePath}`, previewHeight)
+)
+
+const toBundleReferenceMarkdown = (source: string, references: FlowBundleReference[]): string => {
+  if (references.length === 0) {
+    return source
+  }
+
+  const referenceMap = new Map<number, FlowBundleReference>()
+  references.forEach((item) => referenceMap.set(item.blockIndex, item))
+
+  let blockIndex = 0
+  const regex = new RegExp(FLOW_BLOCK_REGEX)
+  return source.replace(regex, (fullMatch, header: string) => {
+    if (!isOnmyojiBlockFenceHeader(header || '')) {
+      return fullMatch
+    }
+    const reference = referenceMap.get(blockIndex)
+    blockIndex += 1
+    if (!reference) {
+      return fullMatch
+    }
+    return buildFlowPreviewReferenceBlock(reference.filePath, reference.previewHeight)
+  })
+}
+
+const normalizeBundleSrcPath = (src: string): string => {
+  return src
+    .split(/[?#]/, 1)[0]
+    .replace(/\\/g, '/')
+    .trim()
+}
+
+const resolveZipFlowEntryPath = (src: string, zip: JSZip): string | null => {
+  const normalized = normalizeBundleSrcPath(src)
+  if (!normalized) {
+    return null
+  }
+
+  const stripped = normalized
+    .replace(/^(\.\/)+/, '')
+    .replace(/^\/+/, '')
+  const fileName = stripped.split('/').filter(Boolean).pop() || ''
+  const candidates = Array.from(new Set([
+    stripped,
+    stripped.replace(/^data\//, ''),
+    stripped.replace(/^onmyoji-wiki\//, ''),
+    fileName ? `flows/${fileName}` : ''
+  ].filter(Boolean)))
+
+  for (const candidate of candidates) {
+    if (zip.file(candidate)) {
+      return candidate
+    }
+  }
+  return null
+}
+
+const restoreInlineFlowBlocksFromReferenceMarkdown = async (source: string, zip: JSZip): Promise<string> => {
+  const regex = new RegExp(FLOW_BLOCK_REGEX)
+  let result = ''
+  let cursor = 0
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(source)) !== null) {
+    const fullMatch = match[0] || ''
+    const header = match[1] || ''
+    const info = parseOnmyojiEditorFenceInfo(`${ONMYOJI_EDITOR_LANGUAGE}${header}`)
+    let replacement = fullMatch
+
+    if (info.isOnmyojiEditor && info.type === 'file' && info.src) {
+      const entryPath = resolveZipFlowEntryPath(info.src, zip)
+      const entry = entryPath ? zip.file(entryPath) : null
+      if (entry) {
+        try {
+          const rawJson = await entry.async('string')
+          const payload = JSON.parse(rawJson) as Record<string, unknown>
+          const parsedHeight = info.height || NaN
+          if (
+            Number.isFinite(parsedHeight)
+            && parsedHeight > 0
+            && payload
+            && typeof payload === 'object'
+            && !('height' in payload)
+          ) {
+            payload.height = parsedHeight
+          }
+          replacement = buildOnmyojiEditorBlockFence(JSON.stringify(payload, null, 2))
+        } catch {
+          replacement = fullMatch
+        }
+      }
+    }
+
+    result += source.slice(cursor, match.index) + replacement
+    cursor = match.index + fullMatch.length
+  }
+
+  if (cursor === 0) {
+    return source
+  }
+  result += source.slice(cursor)
+  return result
 }
 
 const normalizeMarkdownText = (value: string): string => value.replace(/\r\n/g, '\n')
@@ -525,7 +669,7 @@ const insertFlowBlock = () => {
 
 const buildFlowBlockMarkdown = (height: number): string => {
   const payload = toFlowDemoLikePayload(deepClone(FLOW_HEIGHT_TEST_GRAPH_DATA), height)
-  return `\`\`\`yys-flow\n${JSON.stringify(payload, null, 2)}\n\`\`\``
+  return wrapFlowPayloadCodeBlock(JSON.stringify(payload, null, 2))
 }
 
 const insertFlowHeightTestBlocks = () => {
@@ -665,7 +809,7 @@ const updateFlowBlockHeight = (blockIndex: number, nextHeight: number) => {
     ? deepClone(block.rawPayload)
     : toFlowDemoLikePayload(graphData, normalizedHeight)
   const flowPayload = serializeFlowPayload(rawPayload, graphData, normalizedHeight)
-  const serialized = `\`\`\`yys-flow\n${flowPayload}\n\`\`\``
+  const serialized = wrapFlowPayloadCodeBlock(flowPayload)
   markdown.value = replaceFlowBlock(markdown.value, blockIndex, serialized)
 
   if (editingBlockIndex.value === blockIndex) {
@@ -714,7 +858,7 @@ const applyFlowBlockChanges = async () => {
   editingPreviewHeight.value = normalizedPreviewHeight
   const currentBlock = flowBlocks.value.find((item) => item.blockIndex === editingBlockIndex.value) || null
   const flowPayload = serializeFlowPayload(currentBlock?.rawPayload, normalizedGraphData, normalizedPreviewHeight)
-  const serialized = `\`\`\`yys-flow\n${flowPayload}\n\`\`\``
+  const serialized = wrapFlowPayloadCodeBlock(flowPayload)
   markdown.value = replaceFlowBlock(markdown.value, editingBlockIndex.value, serialized)
   flowEditorVisible.value = false
   operationMessage.value = `流程块 #${editingBlockIndex.value + 1} 已更新。`
@@ -789,7 +933,8 @@ const parseImportedContent = async (file: File): Promise<string> => {
     if (!targetEntry) {
       throw new Error('zip 中未找到可导入的 markdown 文件。')
     }
-    return targetEntry.async('string')
+    const importedMarkdown = await targetEntry.async('string')
+    return restoreInlineFlowBlocksFromReferenceMarkdown(importedMarkdown, zip)
   }
 
   const text = await file.text()
@@ -855,8 +1000,7 @@ const exportBundleZip = async () => {
     const zip = new JSZip()
     const exportedAt = new Date().toISOString()
     const blockManifest: Array<Record<string, unknown>> = []
-
-    zip.file('wiki-editor.md', markdown.value)
+    const flowReferences: FlowBundleReference[] = []
 
     flowBlocks.value.forEach((block) => {
       const payload = block.rawPayload && typeof block.rawPayload === 'object'
@@ -867,6 +1011,11 @@ const exportBundleZip = async () => {
       }
       const fileName = `flows/flow-${block.blockIndex + 1}.json`
       zip.file(fileName, JSON.stringify(payload, null, 2))
+      flowReferences.push({
+        blockIndex: block.blockIndex,
+        filePath: fileName,
+        previewHeight: block.previewHeight
+      })
       blockManifest.push({
         blockIndex: block.blockIndex,
         height: block.previewHeight,
@@ -875,6 +1024,7 @@ const exportBundleZip = async () => {
       })
     })
 
+    zip.file('wiki-editor.md', toBundleReferenceMarkdown(markdown.value, flowReferences))
     zip.file('manifest.json', JSON.stringify({
       version: 1,
       exportedAt,
