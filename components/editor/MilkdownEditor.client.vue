@@ -3,7 +3,10 @@ import { h, nextTick, onBeforeUnmount, onMounted, ref, render, shallowRef, watch
 import '@milkdown/theme-nord/style.css'
 import '@milkdown/kit/prose/gapcursor/style/gapcursor.css'
 import { normalizeGraphForPreview, normalizeGraphData, type GraphData } from '~/utils/flow-preview'
-import { ONMYOJI_EDITOR_LANGUAGE, buildOnmyojiEditorBlockFence } from '~/utils/onmyoji-editor-syntax'
+import {
+  buildOnmyojiEditorBlockFence,
+  parseOnmyojiEditorFenceInfoFromParts
+} from '~/utils/onmyoji-editor-syntax'
 
 type InlineFlowBlockPayload = {
   blockIndex: number
@@ -177,12 +180,27 @@ const hashText = (input: string): string => {
   return `h${hash.toString(16)}`
 }
 
+const resolveOnmyojiFenceInfoFromNode = (node: any) => {
+  const language = typeof node?.attrs?.language === 'string' ? node.attrs.language : ''
+  const meta = typeof node?.attrs?.meta === 'string' ? node.attrs.meta : ''
+  return parseOnmyojiEditorFenceInfoFromParts(language, meta)
+}
+
 const isFlowCodeBlock = (node: any): boolean => {
   if (!node || node.type?.name !== 'code_block') {
     return false
   }
-  const language = typeof node.attrs?.language === 'string' ? node.attrs.language.trim().toLowerCase() : ''
-  return language === ONMYOJI_EDITOR_LANGUAGE || language.startsWith(`${ONMYOJI_EDITOR_LANGUAGE}{`)
+
+  const info = resolveOnmyojiFenceInfoFromNode(node)
+  if (!info.isOnmyojiEditor || info.type !== 'block') {
+    return false
+  }
+
+  const hasPayload = typeof node?.textContent === 'string' && node.textContent.trim().length > 0
+  if (info.explicitType === 'block') {
+    return true
+  }
+  return hasPayload
 }
 
 const resolveFlowBlockIndex = (doc: any, targetPos: number): number => {

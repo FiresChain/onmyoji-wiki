@@ -361,6 +361,46 @@ const resolveFlowBlockMarkdown = (source: string, blockIndex: number): string =>
   return matches[blockIndex] || ''
 }
 
+const resolveFlowBlockIndexFromOnmyojiIndex = (source: string, onmyojiIndex: number): number => {
+  if (onmyojiIndex < 0) {
+    return -1
+  }
+
+  const regex = new RegExp(FLOW_BLOCK_REGEX)
+  let currentOnmyojiIndex = 0
+  let currentBlockIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(source)) !== null) {
+    const header = match[1] || ''
+    const info = parseOnmyojiEditorFenceInfo(`${ONMYOJI_EDITOR_LANGUAGE}${header}`)
+    if (!info.isOnmyojiEditor) {
+      continue
+    }
+
+    if (currentOnmyojiIndex === onmyojiIndex) {
+      return info.type === 'block' ? currentBlockIndex : -1
+    }
+
+    currentOnmyojiIndex += 1
+    if (info.type === 'block') {
+      currentBlockIndex += 1
+    }
+  }
+
+  return -1
+}
+
+const resolveInlineFlowBlockIndex = (inlineBlockIndex: number): number => {
+  if (inlineBlockIndex < 0) {
+    return -1
+  }
+  if (flowBlocks.value.some((item) => item.blockIndex === inlineBlockIndex)) {
+    return inlineBlockIndex
+  }
+  return resolveFlowBlockIndexFromOnmyojiIndex(markdown.value, inlineBlockIndex)
+}
+
 const reorderFlowBlocks = (source: string, fromIndex: number, toIndex: number): string => {
   if (fromIndex === toIndex) {
     return source
@@ -728,9 +768,15 @@ const openFlowBlockEditor = (block: FlowBlock) => {
 }
 
 const handleInlineFlowBlockEdit = (payload: InlineFlowBlockPayload) => {
+  const blockIndex = resolveInlineFlowBlockIndex(payload.blockIndex)
+  if (blockIndex < 0) {
+    operationError.value = '当前代码块不是可编辑的 type="block" 流程块。'
+    return
+  }
+
   openFlowBlockEditor({
-    key: `flow-${payload.blockIndex}`,
-    blockIndex: payload.blockIndex,
+    key: `flow-${blockIndex}`,
+    blockIndex,
     graphData: normalizeGraphData(payload.graphData),
     previewHeight: payload.previewHeight,
     error: payload.error || ''
@@ -752,7 +798,12 @@ const removeFlowBlock = (blockIndex: number, options?: { message?: string }) => 
 
 const handleInlineFlowBlockDelete = (payload: InlineFlowBlockDeletePayload) => {
   clearMessages()
-  removeFlowBlock(payload.blockIndex)
+  const blockIndex = resolveInlineFlowBlockIndex(payload.blockIndex)
+  if (blockIndex < 0) {
+    operationError.value = '删除失败：当前代码块不是可编辑的 type="block" 流程块。'
+    return
+  }
+  removeFlowBlock(blockIndex)
 }
 
 const cutFlowBlock = async (blockIndex: number) => {
@@ -773,7 +824,12 @@ const cutFlowBlock = async (blockIndex: number) => {
 }
 
 const handleInlineFlowBlockCut = async (payload: InlineFlowBlockCutPayload) => {
-  await cutFlowBlock(payload.blockIndex)
+  const blockIndex = resolveInlineFlowBlockIndex(payload.blockIndex)
+  if (blockIndex < 0) {
+    operationError.value = '剪切失败：当前代码块不是可编辑的 type="block" 流程块。'
+    return
+  }
+  await cutFlowBlock(blockIndex)
 }
 
 const moveFlowBlock = (blockIndex: number, direction: 'up' | 'down') => {
@@ -794,7 +850,12 @@ const moveFlowBlock = (blockIndex: number, direction: 'up' | 'down') => {
 
 const handleInlineFlowBlockMove = (payload: InlineFlowBlockMovePayload) => {
   clearMessages()
-  moveFlowBlock(payload.blockIndex, payload.direction)
+  const blockIndex = resolveInlineFlowBlockIndex(payload.blockIndex)
+  if (blockIndex < 0) {
+    operationError.value = '移动失败：当前代码块不是可编辑的 type="block" 流程块。'
+    return
+  }
+  moveFlowBlock(blockIndex, payload.direction)
 }
 
 const updateFlowBlockHeight = (blockIndex: number, nextHeight: number) => {
@@ -859,7 +920,12 @@ const applyFlowBlockChanges = async () => {
   const currentBlock = flowBlocks.value.find((item) => item.blockIndex === editingBlockIndex.value) || null
   const flowPayload = serializeFlowPayload(currentBlock?.rawPayload, normalizedGraphData, normalizedPreviewHeight)
   const serialized = wrapFlowPayloadCodeBlock(flowPayload)
-  markdown.value = replaceFlowBlock(markdown.value, editingBlockIndex.value, serialized)
+  const nextMarkdown = replaceFlowBlock(markdown.value, editingBlockIndex.value, serialized)
+  if (nextMarkdown === markdown.value) {
+    operationError.value = `应用失败：未定位到流程块 #${editingBlockIndex.value + 1}。`
+    return
+  }
+  markdown.value = nextMarkdown
   flowEditorVisible.value = false
   operationMessage.value = `流程块 #${editingBlockIndex.value + 1} 已更新。`
 }

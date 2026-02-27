@@ -9,6 +9,7 @@
 - 支持两种模式：
   - `type="file"`：引用外部 `src` JSON
   - `type="block"`：内联 JSON 数据
+- `/editor` 已修复 `type="file"` 与 `type="block"` 混排时流程块编辑回写错位问题（仅 `type="block"` 进入可视编辑与回写链路）
 
 ## 技术栈
 
@@ -46,14 +47,14 @@ npm run preview
 ### 1. 文件引用（type=file）
 
 ````md
-```onmyoji-editor{type="file" src="/data/flows/test-flow.json" :height="500"}
+```onmyoji-editor type="file" src="/data/flows/test-flow.json" :height="500"
 ```
 ````
 
 ### 2. 内联数据（type=block）
 
 ````md
-```onmyoji-editor{type="block"}
+```onmyoji-editor type="block"
 {
   "height": 320,
   "schemaVersion": 1,

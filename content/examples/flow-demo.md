@@ -4,12 +4,12 @@
 
 ## 示例 1：文件引用（type=file）
 
-```onmyoji-editor{type="file" src="/data/flows/test-flow.json" :height="500"}
+```onmyoji-editor type="file" src="/data/flows/test-flow.json" :height="500"
 ```
 
 ## 示例 2：内联数据（type=block）
 
-```onmyoji-editor{type="block"}
+```onmyoji-editor type="block"
 {
   "height": 420,
   "schemaVersion": 1,

@@ -3,6 +3,7 @@ export type OnmyojiEditorBlockType = 'file' | 'block'
 export type OnmyojiEditorFenceInfo = {
   isOnmyojiEditor: boolean
   type: OnmyojiEditorBlockType
+  explicitType: OnmyojiEditorBlockType | null
   src: string
   height: number | null
   attrs: Record<string, string>
@@ -40,6 +41,7 @@ export const parseOnmyojiEditorFenceInfo = (info: string): OnmyojiEditorFenceInf
     return {
       isOnmyojiEditor: false,
       type: 'block',
+      explicitType: null,
       src: '',
       height: null,
       attrs: {}
@@ -50,6 +52,7 @@ export const parseOnmyojiEditorFenceInfo = (info: string): OnmyojiEditorFenceInf
     return {
       isOnmyojiEditor: false,
       type: 'block',
+      explicitType: null,
       src: '',
       height: null,
       attrs: {}
@@ -66,7 +69,12 @@ export const parseOnmyojiEditorFenceInfo = (info: string): OnmyojiEditorFenceInf
 
   const attrs = parseInlineAttrs(rawAttrSegment)
   const typeRaw = (attrs.type || '').toLowerCase()
-  const type: OnmyojiEditorBlockType = typeRaw === 'file' ? 'file' : 'block'
+  const explicitType: OnmyojiEditorBlockType | null = typeRaw === 'file'
+    ? 'file'
+    : typeRaw === 'block'
+      ? 'block'
+      : null
+  const type: OnmyojiEditorBlockType = explicitType || 'block'
   const src = attrs.src || ''
   const heightRaw = attrs[':height'] ?? attrs.height ?? ''
   const height = Number.isFinite(Number(heightRaw)) && Number(heightRaw) > 0
@@ -76,20 +84,28 @@ export const parseOnmyojiEditorFenceInfo = (info: string): OnmyojiEditorFenceInf
   return {
     isOnmyojiEditor: true,
     type,
+    explicitType,
     src,
     height,
     attrs
   }
 }
 
+export const parseOnmyojiEditorFenceInfoFromParts = (language: string, meta = ''): OnmyojiEditorFenceInfo => {
+  const languagePart = (language || '').trim()
+  const metaPart = (meta || '').trim()
+  const combined = [languagePart, metaPart].filter(Boolean).join(' ').trim()
+  return parseOnmyojiEditorFenceInfo(combined)
+}
+
 export const buildOnmyojiEditorFileFence = (src: string, height?: number | null): string => {
   const heightSegment = Number.isFinite(height || NaN) && Number(height) > 0
     ? ` :height="${Number(height)}"`
     : ''
-  return `\`\`\`${ONMYOJI_EDITOR_LANGUAGE}{type="file" src="${src}"${heightSegment}}\n\`\`\``
+  return `\`\`\`${ONMYOJI_EDITOR_LANGUAGE} type="file" src="${src}"${heightSegment}\n\`\`\``
 }
 
 export const buildOnmyojiEditorBlockFence = (payload: string): string => (
-  `\`\`\`${ONMYOJI_EDITOR_LANGUAGE}{type="block"}\n${payload}\n\`\`\``
+  `\`\`\`${ONMYOJI_EDITOR_LANGUAGE} type="block"\n${payload}\n\`\`\``
 )
 

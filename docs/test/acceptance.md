@@ -70,6 +70,26 @@
 - `components/editor/MilkdownEditor.client.vue` 的 Flow NodeView 实现。
 - `pages/editor.vue` 的 `openFlowBlockEditor(...)` / `applyFlowBlockChanges(...)`。
 
+## 13. file/block 混排下的编辑回写一致性（2026-02-27 新增）
+
+步骤：
+- 在同一篇 markdown 中同时放置：
+  - `type="file"` 的 `onmyoji-editor` 代码块（例如放在前面）
+  - `type="block"` 的 `onmyoji-editor` 代码块（例如放在后面）
+- 在 `/editor` 可视区对 `type="block"` 块执行：编辑 -> 应用到块。
+- 对该块执行删除/剪切/上移下移，观察 markdown 与可视预览是否一致。
+
+预期：
+- 仅 `type="block"` 会进入流程块可视编辑链路。
+- “应用到块”只回写目标 `type="block"`，不会误改前面的 `type="file"`。
+- 删除/剪切/移动等操作与预览一致，不出现索引错位。
+
+失败时排查：
+- `components/editor/MilkdownEditor.client.vue` 的 `isFlowCodeBlock(...)`（需仅识别可编辑 block）。
+- `pages/editor.vue` 的 inline 事件索引映射：
+  - `resolveFlowBlockIndexFromOnmyojiIndex(...)`
+  - `resolveInlineFlowBlockIndex(...)`
+
 ## 4. 流程块位置调整（剪切/粘贴为主）
 
 步骤：
@@ -191,6 +211,7 @@
 ## 11. 回归清单（你本轮反馈的现象）
 
 - [x] 工具栏加粗/斜体点击无效（必须验证修复与否）。
+- [x] `/editor` 流程图块“编辑 -> 应用 -> markdown 回写”异常（file/block 混排索引错位）。
 - [ ] 流程块在文档末尾导致无法把光标放到末尾并继续输入。
 - [ ] 流程块高度调整入口不明显或不生效。
 - [ ] 协作包导出后 Markdown 仍内联所有数据（应确认实现是否符合“引用”预期）。
