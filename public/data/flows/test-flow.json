@@ -1,77 +1,29 @@
 {
+  "height": 260,
   "schemaVersion": 1,
   "fileList": [
     {
-      "id": "f_mlji3ux3iuwjyj",
+      "id": "flow-1",
       "label": "File 1",
-      "name": "1",
+      "name": "File 1",
       "visible": true,
-      "type": "PVE",
+      "type": "FLOW",
       "graphRawData": {
         "nodes": [
           {
-            "id": "cc46e68a-8094-4fc4-9d2b-ba17e67db0ae",
+            "id": "4f4aca49-08d1-449a-8580-4165fc59b24d",
             "type": "assetSelector",
-            "x": 350,
-            "y": 260,
+            "x": 274,
+            "y": 231,
             "properties": {
-              "shikigami": {
-                "avatar": "/assets/Shikigami/sp/595.png",
-                "name": "梦山白藏主",
-                "rarity": "SP"
-              },
-              "meta": {
-                "visible": true,
-                "locked": false
-              },
-              "style": {
-                "width": 100,
-                "height": 80,
-                "rotate": 0,
-                "fill": "#ffffff",
-                "stroke": "#dcdfe6",
-                "strokeWidth": 1,
-                "radius": 4,
-                "opacity": 1,
-                "shadow": {
-                  "color": "rgba(0,0,0,0.1)",
-                  "blur": 4,
-                  "offsetX": 0,
-                  "offsetY": 2
-                }
-              },
-              "width": 100,
-              "height": 80,
               "assetLibrary": "shikigami",
               "selectedAsset": {
-                "avatar": "/assets/Shikigami/sp/595.png",
-                "name": "梦山白藏主",
-                "rarity": "SP"
+                "avatar": "/assets/Shikigami/ssr/596.png",
+                "name": "神无月",
+                "rarity": "SSR"
               },
-              "_migrated": {
-                "from": "shikigamiSelect",
-                "originalData": {
-                  "avatar": "/assets/Shikigami/sp/595.png",
-                  "name": "梦山白藏主",
-                  "rarity": "SP"
-                }
-              },
-              "_label": []
-            },
-            "zIndex": 1
-          },
-          {
-            "id": "c665583e-f46e-40ae-84d3-99bb11af9bb2",
-            "type": "assetSelector",
-            "x": 525,
-            "y": 345,
-            "properties": {
-              "yuhun": {
-                "name": "蝠翼",
-                "shortName": "蝠",
-                "type": "attack",
-                "avatar": "/assets/Yuhun/蝠翼.png"
-              },
+              "width": 100,
+              "height": 80,
               "meta": {
                 "visible": true,
                 "locked": false
@@ -91,40 +43,15 @@
                   "offsetX": 0,
                   "offsetY": 2
                 }
-              },
-              "width": 100,
-              "height": 80,
-              "assetLibrary": "yuhun",
-              "selectedAsset": {
-                "name": "蝠翼",
-                "shortName": "蝠",
-                "type": "attack",
-                "avatar": "/assets/Yuhun/蝠翼.png"
-              },
-              "_migrated": {
-                "from": "yuhunSelect",
-                "originalData": {
-                  "name": "蝠翼",
-                  "shortName": "蝠",
-                  "type": "attack",
-                  "avatar": "/assets/Yuhun/蝠翼.png"
-                }
-              },
-              "_label": []
+              }
             },
             "zIndex": 1
           }
         ],
         "edges": []
-      },
-      "transform": {
-        "SCALE_X": 1,
-        "SCALE_Y": 1,
-        "TRANSLATE_X": 0,
-        "TRANSLATE_Y": -3
       }
     }
   ],
-  "activeFileId": "f_mlji3ux3iuwjyj",
-  "activeFile": "1"
+  "activeFileId": "flow-1",
+  "activeFile": "File 1"
 }

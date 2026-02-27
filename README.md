@@ -5,10 +5,10 @@
 ## 当前状态
 
 - 已支持 Markdown 内容渲染（`ContentRenderer`）
-- 已支持 MDC 组件 `::flow-preview` 展示流程图
-- 支持两种数据输入：
-  - 内联 `data`
-  - 外部 `src` JSON
+- 已支持统一语法 `onmyoji-editor` 代码块渲染流程图
+- 支持两种模式：
+  - `type="file"`：引用外部 `src` JSON
+  - `type="block"`：内联 JSON 数据
 
 ## 技术栈
 
@@ -41,40 +41,28 @@ npm run preview
 
 例如：`content/examples/flow-demo.md` 对应路由 `/examples/flow-demo`。
 
-## FlowPreview 用法
+## onmyoji-editor 语法
 
-### 1. 内联数据
+### 1. 文件引用（type=file）
 
-```md
-::flow-preview
----
-data:
-  nodes:
-    - id: start
-      type: circle
-      x: 120
-      y: 100
-      text: { value: "开始" }
-    - id: end
-      type: circle
-      x: 320
-      y: 100
-      text: { value: "结束" }
-  edges:
-    - sourceNodeId: start
-      targetNodeId: end
-      type: polyline
-height: 320
----
-::
+````md
+```onmyoji-editor{type="file" src="/data/flows/test-flow.json" :height="500"}
 ```
+````
 
-### 2. 外部 JSON
+### 2. 内联数据（type=block）
 
-```md
-::flow-preview{src="/data/flows/test-flow.json" :height="500"}
-::
+````md
+```onmyoji-editor{type="block"}
+{
+  "height": 320,
+  "schemaVersion": 1,
+  "fileList": [],
+  "activeFileId": "flow-1",
+  "activeFile": "File 1"
+}
 ```
+````
 
 ## 目录结构
 

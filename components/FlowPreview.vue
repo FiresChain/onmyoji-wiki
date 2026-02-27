@@ -7,8 +7,10 @@ import { normalizeGraphData, normalizeGraphForPreview, type GraphData } from '~/
 import { collectFlowAssetIssues, rewriteFlowAssetUrls, type AssetRenderPolicy } from '~/utils/flow-assets'
 
 type FlowCapabilityLevel = 'render-only' | 'interactive'
+type FlowPreviewType = 'file' | 'block'
 
 const props = withDefaults(defineProps<{
+  type?: FlowPreviewType
   data?: Record<string, any> | null
   src?: string
   height?: number | string
@@ -16,6 +18,7 @@ const props = withDefaults(defineProps<{
   capability?: FlowCapabilityLevel
   assetPolicy?: AssetRenderPolicy
 }>(), {
+  type: 'file',
   data: () => ({ nodes: [], edges: [] }),
   src: '',
   height: 400,
@@ -31,6 +34,12 @@ const runtimeConfig = useRuntimeConfig()
 const baseURL = computed(() => runtimeConfig.app.baseURL || '/')
 const resolvedCapability = computed<FlowCapabilityLevel>(() => {
   return props.capability || 'render-only'
+})
+const resolvedType = computed<FlowPreviewType>(() => {
+  if (props.type === 'block') {
+    return 'block'
+  }
+  return 'file'
 })
 
 const resolveSrcUrl = (src: string) => {
@@ -93,13 +102,19 @@ const loadFromSrc = async (src: string) => {
 }
 
 if (import.meta.client) {
-  watch(() => props.src, (newSrc) => {
-    void loadFromSrc(newSrc)
+  watch([() => props.type, () => props.src], () => {
+    if (resolvedType.value === 'block') {
+      loading.value = false
+      errorMessage.value = ''
+      applyData(props.data)
+      return
+    }
+    void loadFromSrc(props.src)
   }, { immediate: true })
 }
 
 watch(() => props.data, (newData) => {
-  if (!props.src) {
+  if (resolvedType.value === 'block' || !props.src) {
     applyData(newData)
   }
 }, { deep: true })

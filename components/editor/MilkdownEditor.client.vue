@@ -3,6 +3,7 @@ import { h, nextTick, onBeforeUnmount, onMounted, ref, render, shallowRef, watch
 import '@milkdown/theme-nord/style.css'
 import '@milkdown/kit/prose/gapcursor/style/gapcursor.css'
 import { normalizeGraphForPreview, normalizeGraphData, type GraphData } from '~/utils/flow-preview'
+import { ONMYOJI_EDITOR_LANGUAGE, buildOnmyojiEditorBlockFence } from '~/utils/onmyoji-editor-syntax'
 
 type InlineFlowBlockPayload = {
   blockIndex: number
@@ -181,7 +182,7 @@ const isFlowCodeBlock = (node: any): boolean => {
     return false
   }
   const language = typeof node.attrs?.language === 'string' ? node.attrs.language.trim().toLowerCase() : ''
-  return language === 'yys-flow'
+  return language === ONMYOJI_EDITOR_LANGUAGE || language.startsWith(`${ONMYOJI_EDITOR_LANGUAGE}{`)
 }
 
 const resolveFlowBlockIndex = (doc: any, targetPos: number): number => {
@@ -681,7 +682,7 @@ const focusEditor = () => {
 }
 
 const insertFlowBlock = () => {
-  insertText('\n```yys-flow\n{\n  "height": 260,\n  "schemaVersion": 1,\n  "fileList": [\n    {\n      "id": "flow-1",\n      "label": "File 1",\n      "name": "File 1",\n      "visible": true,\n      "type": "FLOW",\n      "graphRawData": {\n        "nodes": [],\n        "edges": []\n      }\n    }\n  ],\n  "activeFileId": "flow-1",\n  "activeFile": "File 1"\n}\n```\n')
+  insertText(`\n${buildOnmyojiEditorBlockFence('{\n  "height": 260,\n  "schemaVersion": 1,\n  "fileList": [\n    {\n      "id": "flow-1",\n      "label": "File 1",\n      "name": "File 1",\n      "visible": true,\n      "type": "FLOW",\n      "graphRawData": {\n        "nodes": [],\n        "edges": []\n      }\n    }\n  ],\n  "activeFileId": "flow-1",\n  "activeFile": "File 1"\n}')}\n`)
 }
 
 const getMarkdownContent = (): string => {
