@@ -90,7 +90,36 @@
   - `resolveFlowBlockIndexFromOnmyojiIndex(...)`
   - `resolveInlineFlowBlockIndex(...)`
 
-## 4. 流程块位置调整（剪切/粘贴为主）
+## 14. 跨项目互通验收（yys-editor <-> onmyoji-wiki/editor）
+
+目标：确认“素材管理”和“规则管理”在跨项目场景下的当前行为与后续目标。
+
+### 14.1 素材互通（同 origin）
+
+步骤：
+- 在 `yys-editor` 中上传“我的素材”并保存。
+- 在同一浏览器、同一 origin 下进入 `onmyoji-wiki/editor`，打开素材选择。
+
+预期（当前实现）：
+- 可直接看到并使用同一批“我的素材”，无需重复导入。
+
+说明：
+- 当前素材依赖 localStorage（键：`yys-editor.custom-assets.v1`），因此仅在同 origin 下可互通。
+- 跨 origin（不同协议/域名/端口）默认不互通。
+
+### 14.2 规则互通（同 origin）
+
+步骤：
+- 在 `yys-editor` 侧调整规则配置（如后续提供 UI/配置入口）。
+- 进入 `onmyoji-wiki/editor`，验证规则提示是否按同一配置生效。
+
+预期（当前实现）：
+- 当前不自动互通“用户自定义规则”，两侧仍是各自内置默认规则配置。
+
+结论：
+- “规则跨项目互通”可实现，但需增加共享规则配置源（例如同一 localStorage key / 后端配置接口），并让两侧统一读取。
+
+## 4. 流程块位置调整（剪切/粘贴为主）（已完成）
 
 步骤：
 - 插入至少 2 个流程块，确保能区分顺序。
@@ -108,7 +137,7 @@
 - `pages/editor.vue` 的 `cutFlowBlock(...)`、`pasteFlowBlock(...)`、`resolveFlowBlockMarkdown(...)`、`appendFlowBlockToDocEnd(...)`。
 - `components/editor/MilkdownEditor.client.vue` 的 Flow NodeView `cut-flow-block` 事件触发链路。
 
-## 5. 光标与可编辑性（流程块在文档末尾）
+## 5. 光标与可编辑性（流程块在文档末尾）（已完成）
 
 目的：验证“流程块在文档末尾时”，可通过“剪切 + 粘贴”路径绕开末尾光标难以编辑的问题。
 
@@ -131,7 +160,7 @@
 - `components/editor/MilkdownEditor.client.vue` NodeView 的按钮事件是否正常触发到页面层。
 - `components/editor/MilkdownEditor.client.vue` 是否已启用 `@milkdown/kit/plugin/cursor` 与 `@milkdown/kit/plugin/trailing`（含 gapcursor 样式）。
 
-## 6. 流程块高度调整（入口与生效）
+## 6. 流程块高度调整（入口与生效）（已完成）
 
 步骤：
 - 在“流程块管理区”找到某个块的高度输入框，修改高度。
@@ -144,7 +173,7 @@
 失败时排查：
 - `pages/editor.vue` 的 `updateFlowBlockHeight(...)`、`resolvePreviewHeight(...)`。
 
-## 7. 协作包（zip）导出
+## 7. 协作包（zip）导出（已完成）
 
 步骤：
 - 生成至少 1 个流程块并填入一定内容。
@@ -159,7 +188,7 @@
 补充预期（引用策略）：
 - 若当前实现仍将 JSON 内联保留在 Markdown 中：记录为“未完成项”，后续应改为 Markdown 中仅保留引用（例如 `src` 指向 `flows/*.json`）。
 
-## 8. 协作包（zip）导入
+## 8. 协作包（zip）导入（已完成）
 
 步骤：
 - 点击导入按钮，选择一个之前导出的 zip。
@@ -212,9 +241,11 @@
 
 - [x] 工具栏加粗/斜体点击无效（必须验证修复与否）。
 - [x] `/editor` 流程图块“编辑 -> 应用 -> markdown 回写”异常（file/block 混排索引错位）。
-- [ ] 流程块在文档末尾导致无法把光标放到末尾并继续输入。
-- [ ] 流程块高度调整入口不明显或不生效。
-- [ ] 协作包导出后 Markdown 仍内联所有数据（应确认实现是否符合“引用”预期）。
-- [ ] 协作包导入入口/功能是否可用（zip 导入是否可见、是否能恢复流程）。
+- [x] 流程块位置调整（剪切/粘贴为主）。
+- [x] 流程块在文档末尾导致无法把光标放到末尾并继续输入。
+- [x] 流程块高度调整入口不明显或不生效。
+- [ ] 跨项目互通：素材/规则在同 origin 下行为与预期一致（素材可复用，规则配置需统一来源）。
+- [x] 协作包导出为“Markdown 引用 + flows/*.json”结构，导出结果符合协作包预期。
+- [x] 协作包导入入口/功能可用（zip 导入可见，能恢复流程并回到可编辑内联块）。
 - [ ] 规则检查入口在哪里、分组如何操作（UI 是否可理解）。
 
