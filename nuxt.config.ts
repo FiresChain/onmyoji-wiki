@@ -50,7 +50,7 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: [
-        'yys-editor',
+        '@rookie4show/onmyoji-flow',
         'element-plus',
         'dayjs',
         '@logicflow/core',
@@ -61,21 +61,13 @@ export default defineNuxtConfig({
     },
     ssr: {
       noExternal: [
-        'yys-editor',
+        '@rookie4show/onmyoji-flow',
         'element-plus',
         'dayjs',
         '@logicflow/core',
         '@logicflow/extension',
         '@logicflow/vue-node-registry'
       ]
-    },
-    server: {
-      fs: {
-        allow: [
-          // 允许访问 yys-editor（npm link 时需要）
-          '../yys-editor'
-        ]
-      }
     }
   },
 

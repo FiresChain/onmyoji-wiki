@@ -433,8 +433,8 @@ onMounted(async () => {
 
     if (import.meta.client) {
       const [{ YysEditorPreview }] = await Promise.all([
-        import('yys-editor'),
-        import('yys-editor/style.css')
+        import('@rookie4show/onmyoji-flow'),
+        import('@rookie4show/onmyoji-flow/style.css')
       ])
       flowPreviewComponent.value = YysEditorPreview
     }

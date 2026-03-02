@@ -1,6 +1,6 @@
 # Onmyoji Wiki
 
-基于 Nuxt Content(MDC) 的阴阳师 Wiki，集成 `yys-editor` 流程图预览能力。
+基于 Nuxt Content(MDC) 的阴阳师 Wiki，集成 `onmyoji-flow` 流程图预览能力。
 
 ## 当前状态
 
@@ -16,7 +16,7 @@
 - Nuxt 3
 - @nuxt/content 3
 - Vue 3
-- yys-editor 1.x
+- @rookie4show/onmyoji-flow 0.1.x
 
 ## 快速开始
 
@@ -95,6 +95,6 @@ onmyoji-wiki/
 
 - 保持访客端为静态 Wiki（SEO 友好）
 - 在 `/editor` 路径集成 Milkdown 编辑器
-- 通过插件方式接入 yys-editor 进行图编辑
+- 通过插件方式接入 onmyoji-flow 进行图编辑
 
 详细计划见 `docs/1management/plan.md`。

@@ -90,14 +90,14 @@
   - `resolveFlowBlockIndexFromOnmyojiIndex(...)`
   - `resolveInlineFlowBlockIndex(...)`
 
-## 14. 跨项目互通验收（yys-editor <-> onmyoji-wiki/editor）
+## 14. 跨项目互通验收（onmyoji-flow <-> onmyoji-wiki/editor）
 
 目标：确认“素材管理”和“规则管理”在跨项目场景下的当前行为与后续目标。
 
 ### 14.1 素材互通（同 origin）
 
 步骤：
-- 在 `yys-editor` 中上传“我的素材”并保存。
+- 在 `onmyoji-flow` 中上传“我的素材”并保存。
 - 在同一浏览器、同一 origin 下进入 `onmyoji-wiki/editor`，打开素材选择。
 
 预期（当前实现）：
@@ -110,7 +110,7 @@
 ### 14.2 规则互通（同 origin）
 
 步骤：
-- 在 `yys-editor` 侧调整规则配置（如后续提供 UI/配置入口）。
+- 在 `onmyoji-flow` 侧调整规则配置（如后续提供 UI/配置入口）。
 - 进入 `onmyoji-wiki/editor`，验证规则提示是否按同一配置生效。
 
 预期（当前实现）：
