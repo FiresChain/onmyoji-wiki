@@ -415,8 +415,8 @@ onMounted(async () => {
 
     if (import.meta.client) {
       const [{ YysEditorPreview }] = await Promise.all([
-        import('yys-editor'),
-        import('yys-editor/style.css')
+        import('@fireschain/onmyoji-flow'),
+        import('@fireschain/onmyoji-flow/style.css')
       ])
       flowPreviewComponent.value = YysEditorPreview
     }

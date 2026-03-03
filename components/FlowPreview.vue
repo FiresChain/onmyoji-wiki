@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { joinURL } from 'ufo'
-import { YysEditorPreview } from 'yys-editor'
-import 'yys-editor/style.css'
+import { YysEditorPreview } from '@fireschain/onmyoji-flow'
+import '@fireschain/onmyoji-flow/style.css'
 import { normalizeGraphData, normalizeGraphForPreview, type GraphData } from '~/utils/flow-preview'
 import { collectFlowAssetIssues, rewriteFlowAssetUrls, type AssetRenderPolicy } from '~/utils/flow-assets'
 
