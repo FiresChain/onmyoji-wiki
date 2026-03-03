@@ -1,8 +1,8 @@
-﻿<script setup lang="ts">
+<script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, nextTick, ref, watch } from 'vue'
 import MilkdownEditor, { type MilkdownEditorHandle } from '~/components/editor/MilkdownEditor.client.vue'
-import { YysEditorPreview } from '@fireschain/onmyoji-flow'
-import '@fireschain/onmyoji-flow/style.css'
+import { YysEditorPreview } from '@rookie4show/onmyoji-flow'
+import '@rookie4show/onmyoji-flow/style.css'
 import JSZip from 'jszip'
 import { FileSystemEditorStorageAdapter } from '~/utils/editor-storage/file-system'
 import { LOCAL_STORAGE_BACKUP_KEY, LOCAL_STORAGE_KEY, LocalStorageEditorStorageAdapter } from '~/utils/editor-storage/local-storage'
