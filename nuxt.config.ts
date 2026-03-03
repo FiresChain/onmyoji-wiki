@@ -1,13 +1,31 @@
 export default defineNuxtConfig({
   modules: ['@nuxt/content'],
+  components: [
+    {
+      path: '~/components'
+    },
+    {
+      path: '~/components/layout',
+      pathPrefix: false
+    }
+  ],
+  css: ['~/assets/css/theme.css'],
   app: {
     baseURL: process.env.NUXT_APP_BASE_URL || '/'
+  },
+  mdc: {
+    rehypePlugins: {
+      // Windows 下避免生成 `D:/...` 绝对路径导入（会触发 ERR_UNSUPPORTED_ESM_URL_SCHEME）
+      highlight: {
+        src: '@nuxtjs/mdc/dist/runtime/highlighter/rehype-nuxt'
+      }
+    }
   },
 
   vite: {
     optimizeDeps: {
       include: [
-        'yys-editor',
+        '@fireschain/onmyoji-flow',
         'element-plus',
         'dayjs',
         '@logicflow/core',
@@ -18,7 +36,7 @@ export default defineNuxtConfig({
     },
     ssr: {
       noExternal: [
-        'yys-editor',
+        '@fireschain/onmyoji-flow',
         'element-plus',
         'dayjs',
         '@logicflow/core',
@@ -29,8 +47,10 @@ export default defineNuxtConfig({
     server: {
       fs: {
         allow: [
-          // 允许访问 yys-editor（npm link 时需要）
-          '../yys-editor'
+          // 允许访问 onmyoji-flow（file: 依赖联调）
+          '../onmyoji-flow',
+          // monorepo 联调时，允许访问工作区根 node_modules（如 milkdown 样式）
+          '../node_modules'
         ]
       }
     }

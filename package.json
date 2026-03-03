@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "nuxt dev",
+    "clean:nuxt": "nuxi cleanup && nuxt prepare",
+    "generate:index": "node scripts/generate-search-index.mjs",
+    "prebuild": "npm run generate:index",
+    "pregenerate": "npm run generate:index",
     "build": "nuxt build",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
@@ -22,7 +26,7 @@
     "markdown-it": "^14.1.1",
     "nuxt": "^3.13.0",
     "vue": "latest",
-    "yys-editor": "^1.0.6"
+    "@fireschain/onmyoji-flow": "file:../onmyoji-flow"
   },
   "devDependencies": {
     "@types/node": "^20.11.0"
