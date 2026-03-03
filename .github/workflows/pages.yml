@@ -22,9 +22,6 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Checkout onmyoji-flow dependency
-        run: git clone --depth 1 https://github.com/FiresChain/onmyoji-flow.git ../onmyoji-flow
-
       - name: Install dependencies
         run: npm ci
 
@@ -36,3 +33,4 @@ jobs:
         with:
           name: onmyoji-wiki-static
           path: ./.output/public
+

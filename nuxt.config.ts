@@ -25,7 +25,7 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: [
-        '@fireschain/onmyoji-flow',
+        '@rookie4show/onmyoji-flow',
         'element-plus',
         'dayjs',
         '@logicflow/core',
@@ -36,7 +36,7 @@ export default defineNuxtConfig({
     },
     ssr: {
       noExternal: [
-        '@fireschain/onmyoji-flow',
+        '@rookie4show/onmyoji-flow',
         'element-plus',
         'dayjs',
         '@logicflow/core',
@@ -47,8 +47,6 @@ export default defineNuxtConfig({
     server: {
       fs: {
         allow: [
-          // 允许访问 onmyoji-flow（file: 依赖联调）
-          '../onmyoji-flow',
           // monorepo 联调时，允许访问工作区根 node_modules（如 milkdown 样式）
           '../node_modules'
         ]
