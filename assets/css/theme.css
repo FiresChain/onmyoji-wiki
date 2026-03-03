@@ -1,0 +1,370 @@
+:root {
+  --color-background: #15131b;
+  --color-foreground: #f3f1eb;
+  --color-muted: #9f9ba8;
+  --color-primary: #d5553f;
+  --color-primary-contrast: #fff8f5;
+  --color-secondary: #d5b468;
+  --color-border: #312d3b;
+  --color-surface: #1f1b28;
+  --color-surface-soft: #272232;
+  --radius: 10px;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#__nuxt {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 15% 0%, #252033 0%, var(--color-background) 38%);
+  color: var(--color-foreground);
+  font-family: 'Noto Serif SC', 'Source Han Serif SC', 'PingFang SC', 'Microsoft YaHei', serif;
+  line-height: 1.6;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main {
+  flex: 1;
+}
+
+.site-container {
+  width: min(1200px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--color-background) 85%, transparent);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.site-nav-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 68px;
+}
+
+.site-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.site-brand-badge {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--color-primary);
+  color: var(--color-primary-contrast);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.site-brand-text {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.1;
+  gap: 2px;
+}
+
+.site-brand-text strong {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.site-brand-text small {
+  color: var(--color-muted);
+  font-size: 11px;
+}
+
+.site-nav-desktop {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.site-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.site-lang-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-lang-select span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.site-lang-select select {
+  min-height: 34px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-foreground);
+  border-radius: 8px;
+  padding: 0 30px 0 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.site-nav-link {
+  color: var(--color-muted);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  transition: 0.2s ease;
+}
+
+.site-nav-link:hover {
+  background: var(--color-surface-soft);
+  color: var(--color-foreground);
+}
+
+.site-nav-link.is-active {
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+}
+
+.site-nav-toggle {
+  display: none;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-foreground);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.site-nav-mobile {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-background);
+}
+
+.site-nav-mobile-inner {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0 12px;
+}
+
+.site-nav-mobile-lang {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 12px 12px;
+  border-bottom: 1px dashed var(--color-border);
+  margin-bottom: 8px;
+}
+
+.site-nav-mobile-lang span {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.site-nav-mobile-lang .site-lang-select span {
+  display: none;
+}
+
+.site-footer {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 38px 0 22px;
+}
+
+.site-footer-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 28px;
+}
+
+.site-footer-text {
+  margin: 12px 0 0;
+  color: var(--color-muted);
+  max-width: 440px;
+}
+
+.site-footer-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.site-footer-links h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.site-footer-links a {
+  display: block;
+  color: var(--color-muted);
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+.site-footer-links a:hover {
+  color: var(--color-primary);
+}
+
+.site-footer-note {
+  color: var(--color-muted);
+  margin: 14px 0 0;
+  text-align: center;
+  font-size: 12px;
+}
+
+.divider-ornament {
+  height: 1px;
+  margin: 26px 0 16px;
+  background: linear-gradient(90deg, transparent 0%, var(--color-primary) 50%, transparent 100%);
+}
+
+.page-header {
+  border-bottom: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  padding: 30px 0;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: clamp(26px, 3.8vw, 36px);
+}
+
+.page-header p {
+  margin: 8px 0 0;
+  color: var(--color-muted);
+}
+
+.page-breadcrumbs {
+  margin-bottom: 10px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.page-breadcrumb-link:hover {
+  color: var(--color-primary);
+}
+
+.page-breadcrumb-sep {
+  margin: 0 8px;
+}
+
+.page-breadcrumb-current {
+  color: var(--color-foreground);
+}
+
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface);
+  box-shadow: var(--shadow);
+}
+
+.wiki-prose {
+  color: var(--color-foreground);
+}
+
+.wiki-prose > :first-child {
+  margin-top: 0;
+}
+
+.wiki-prose h1,
+.wiki-prose h2,
+.wiki-prose h3,
+.wiki-prose h4 {
+  color: var(--color-foreground);
+  margin-top: 1.5em;
+  margin-bottom: 0.6em;
+  line-height: 1.25;
+}
+
+.wiki-prose h2 {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.wiki-prose p {
+  margin: 0 0 1em;
+  color: color-mix(in srgb, var(--color-foreground) 88%, transparent);
+}
+
+.wiki-prose ul,
+.wiki-prose ol {
+  padding-left: 1.5em;
+  margin: 0 0 1em;
+}
+
+.wiki-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 1em;
+}
+
+.wiki-prose th,
+.wiki-prose td {
+  border: 1px solid var(--color-border);
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.wiki-prose blockquote {
+  border-left: 3px solid var(--color-primary);
+  margin: 0 0 1em;
+  padding: 6px 0 6px 12px;
+  color: color-mix(in srgb, var(--color-foreground) 86%, transparent);
+}
+
+.wiki-prose code {
+  background: var(--color-surface-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.9em;
+}
+
+@media (max-width: 900px) {
+  .site-nav-desktop {
+    display: none;
+  }
+
+  .site-nav-toggle {
+    display: inline-flex;
+  }
+
+  .site-footer-top {
+    grid-template-columns: 1fr;
+  }
+}
