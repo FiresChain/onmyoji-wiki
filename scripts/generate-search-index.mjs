@@ -162,8 +162,15 @@ async function main() {
 
   for (const filePath of files) {
     const relativePath = path.relative(CONTENT_ROOT, filePath)
+    const pathParts = relativePath.split(path.sep)
+    const topLevelDir = pathParts[0]
     const routePath = toRoutePath(relativePath)
     const basename = path.basename(filePath, '.md')
+
+    // examples 目录仅用于演示，不参与线上检索索引。
+    if (topLevelDir === 'examples') {
+      continue
+    }
 
     // 专题页和语言首页只用于静态路由/SEO，不进入检索索引。
     if (basename === '_index' || basename === 'index') {
