@@ -21,12 +21,12 @@
     "@milkdown/kit": "^7.18.0",
     "@milkdown/theme-nord": "^7.18.0",
     "@nuxt/content": "^3.10.0",
+    "@rookie4show/onmyoji-flow": "0.1.2",
     "better-sqlite3": "^12.6.2",
     "jszip": "^3.10.1",
     "markdown-it": "^14.1.1",
     "nuxt": "^3.13.0",
-    "vue": "latest",
-    "@rookie4show/onmyoji-flow": "0.1.0"
+    "vue": "latest"
   },
   "devDependencies": {
     "@types/node": "^20.11.0"
