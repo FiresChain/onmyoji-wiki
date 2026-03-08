@@ -18,7 +18,7 @@ import {
 } from '~/utils/onmyoji-editor-syntax'
 
 definePageMeta({
-  path: '/:locale(zh|en)/editor',
+  path: '/:locale(zh|zh-tw|ja|vi|ko|en)/editor',
   alias: ['/editor']
 })
 
@@ -1315,6 +1315,12 @@ onBeforeUnmount(() => {
   min-height: 100vh;
   background: linear-gradient(180deg, #f6f8fb 0%, #eef2f8 100%);
   padding: 24px 16px 48px;
+  color: #1f2937;
+  --color-foreground: #1f2937;
+  --color-muted: #6b7280;
+  --color-border: #d1d5db;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f3f4f6;
 }
 
 .panel {
@@ -1325,6 +1331,7 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 18px 30px rgba(15, 23, 42, 0.08);
+  color: #1f2937;
 }
 
 .panel-header h1 {
