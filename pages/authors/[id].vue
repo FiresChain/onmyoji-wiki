@@ -4,8 +4,7 @@ import { loadSearchIndex } from '~/utils/search-index'
 import { getContentLocaleFromPath } from '~/utils/site-locale'
 
 definePageMeta({
-  path: '/:locale(zh|en)/authors/:id',
-  alias: ['/authors/:id']
+  path: '/:locale(zh|en)/authors/:id'
 })
 
 type SearchIndexItem = {

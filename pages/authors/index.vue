@@ -3,8 +3,7 @@ import { getAuthorProfile } from '~/utils/author-profiles'
 import { loadSearchIndex } from '~/utils/search-index'
 
 definePageMeta({
-  path: '/:locale(zh|en)/authors',
-  alias: ['/authors']
+  path: '/:locale(zh|en)/authors'
 })
 
 type SearchIndexItem = {

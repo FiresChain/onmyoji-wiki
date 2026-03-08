@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { joinURL } from 'ufo'
 import { YysEditorPreview } from '@rookie4show/onmyoji-flow'
 import '@rookie4show/onmyoji-flow/style.css'
-import { normalizeGraphData, normalizeGraphForPreview, type GraphData } from '~/utils/flow-preview'
+import { normalizeGraphData, normalizeGraphForPreview, resolveGraphBounds, type GraphData } from '~/utils/flow-preview'
 import { collectFlowAssetIssues, rewriteFlowAssetUrls, type AssetRenderPolicy } from '~/utils/flow-assets'
 
 type FlowCapabilityLevel = 'render-only' | 'interactive'
@@ -14,6 +14,8 @@ const props = withDefaults(defineProps<{
   data?: Record<string, any> | null
   src?: string
   height?: number | string
+  autoScale?: boolean
+  debugLayout?: boolean
   showMiniMap?: boolean
   capability?: FlowCapabilityLevel
   assetPolicy?: AssetRenderPolicy
@@ -22,15 +24,31 @@ const props = withDefaults(defineProps<{
   data: () => ({ nodes: [], edges: [] }),
   src: '',
   height: 400,
+  autoScale: true,
+  debugLayout: false,
   showMiniMap: false,
   assetPolicy: 'degrade'
 })
+
+const MIN_CANVAS_WIDTH = 360
+const MIN_CANVAS_HEIGHT = 220
+const GRAPH_PADDING = 120
+const GRAPH_SAFE_PADDING = 48
+const FITVIEW_VERTICAL_OFFSET = 56
+const FITVIEW_HORIZONTAL_OFFSET = 96
+const FITVIEW_RETRY_LIMIT = 6
+const FITVIEW_RETRY_DELAY_MS = 30
 
 const flowData = ref<GraphData>({ nodes: [], edges: [] })
 const loading = ref(false)
 const errorMessage = ref('')
 const assetIssueMessage = ref('')
+const canvasViewportRef = ref<HTMLElement | null>(null)
+const viewportWidth = ref(0)
 const runtimeConfig = useRuntimeConfig()
+let viewportResizeObserver: ResizeObserver | null = null
+const route = useRoute()
+
 const baseURL = computed(() => runtimeConfig.app.baseURL || '/')
 const resolvedCapability = computed<FlowCapabilityLevel>(() => {
   return props.capability || 'render-only'
@@ -71,6 +89,9 @@ const applyData = (data: any) => {
   }
 
   flowData.value = rewriteFlowAssetUrls(normalizeGraphForPreview(normalized), baseURL.value, props.assetPolicy)
+  nextTick(() => {
+    updateViewportWidth()
+  })
 }
 
 const loadFromSrc = async (src: string) => {
@@ -119,12 +140,208 @@ watch(() => props.data, (newData) => {
   }
 }, { deep: true })
 
-const previewHeight = computed(() => (
-  typeof props.height === 'number' ? `${props.height}px` : props.height
+const normalizeHeightMode = (input: unknown): 'auto' | number => {
+  if (typeof input === 'number' && Number.isFinite(input) && input > 0) {
+    return input
+  }
+  if (typeof input === 'string') {
+    const trimmed = input.trim().toLowerCase()
+    if (trimmed === 'auto') {
+      return 'auto'
+    }
+    const parsed = Number(trimmed)
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed
+    }
+  }
+  return 400
+}
+
+const resolvedHeightMode = computed(() => normalizeHeightMode(props.height))
+const isAutoHeight = computed(() => resolvedHeightMode.value === 'auto')
+const fallbackHeight = computed(() => (
+  typeof resolvedHeightMode.value === 'number' ? resolvedHeightMode.value : 400
 ))
 
-// 导出数据
+const graphBounds = computed(() => resolveGraphBounds(flowData.value))
+const estimatedCanvasWidth = computed(() => {
+  const bounds = graphBounds.value
+  if (!bounds) {
+    return MIN_CANVAS_WIDTH
+  }
+  const boundsBasedWidth = bounds.width + GRAPH_PADDING + GRAPH_SAFE_PADDING
+  const originBasedWidth = bounds.maxX + GRAPH_PADDING + GRAPH_SAFE_PADDING
+  return Math.max(MIN_CANVAS_WIDTH, Math.ceil(Math.max(boundsBasedWidth, originBasedWidth)))
+})
+const estimatedCanvasHeight = computed(() => {
+  const bounds = graphBounds.value
+  if (!bounds) {
+    return MIN_CANVAS_HEIGHT
+  }
+  const boundsBasedHeight = bounds.height + GRAPH_PADDING + GRAPH_SAFE_PADDING
+  const originBasedHeight = bounds.maxY + GRAPH_PADDING + GRAPH_SAFE_PADDING
+  return Math.max(MIN_CANVAS_HEIGHT, Math.ceil(Math.max(boundsBasedHeight, originBasedHeight)))
+})
+
+const resolvedCanvasWidth = computed(() => {
+  const hostWidth = Math.max(1, viewportWidth.value || MIN_CANVAS_WIDTH)
+  return hostWidth
+})
+
+const resolvedCanvasHeight = computed(() => {
+  const manualHeight = fallbackHeight.value
+  const targetHeight = isAutoHeight.value
+    ? estimatedCanvasHeight.value
+    : Math.max(manualHeight, estimatedCanvasHeight.value)
+  return Math.max(MIN_CANVAS_HEIGHT, Math.ceil(targetHeight))
+})
+
+const estimatedWidthScale = computed(() => {
+  if (!props.autoScale) {
+    return 1
+  }
+  const hostWidth = Math.max(1, viewportWidth.value || MIN_CANVAS_WIDTH)
+  if (estimatedCanvasWidth.value <= hostWidth) {
+    return 1
+  }
+  const safeHostWidth = Math.max(1, hostWidth - 2)
+  return safeHostWidth / estimatedCanvasWidth.value
+})
+
+const previewViewportHeight = computed(() => {
+  const scaledHeight = resolvedCanvasHeight.value * estimatedWidthScale.value
+  if (isAutoHeight.value) {
+    return Math.ceil(scaledHeight)
+  }
+  return Math.ceil(Math.max(fallbackHeight.value, scaledHeight))
+})
+
+const previewHeight = computed(() => `${previewViewportHeight.value}px`)
+
+const debugLayoutEnabled = computed(() => {
+  if (props.debugLayout) {
+    return true
+  }
+  const raw = route.query.flowDebug ?? route.query.flow_debug
+  const first = Array.isArray(raw) ? raw[0] : raw
+  const value = String(first || '').trim().toLowerCase()
+  return value === '1' || value === 'true' || value === 'yes'
+})
+
+const updateViewportWidth = () => {
+  if (!canvasViewportRef.value) {
+    viewportWidth.value = 0
+    return
+  }
+  viewportWidth.value = Math.max(0, canvasViewportRef.value.clientWidth)
+}
+
+const setupViewportResizeObserver = () => {
+  viewportResizeObserver?.disconnect()
+  viewportResizeObserver = null
+
+  if (typeof ResizeObserver === 'undefined' || !canvasViewportRef.value) {
+    return
+  }
+  viewportResizeObserver = new ResizeObserver(() => {
+    updateViewportWidth()
+  })
+  viewportResizeObserver.observe(canvasViewportRef.value)
+  updateViewportWidth()
+}
+
 const previewRef = ref<any>()
+
+const applyPreviewFitView = (attempt = 0) => {
+  if (!import.meta.client || !props.autoScale || loading.value || !!errorMessage.value) {
+    return
+  }
+  const preview = previewRef.value as any
+  if (!preview || typeof preview.fitView !== 'function') {
+    if (attempt < FITVIEW_RETRY_LIMIT) {
+      setTimeout(() => applyPreviewFitView(attempt + 1), FITVIEW_RETRY_DELAY_MS)
+    }
+    return
+  }
+  requestAnimationFrame(() => {
+    const applied = preview.fitView(FITVIEW_VERTICAL_OFFSET, FITVIEW_HORIZONTAL_OFFSET)
+    if (!applied && attempt < FITVIEW_RETRY_LIMIT) {
+      setTimeout(() => applyPreviewFitView(attempt + 1), FITVIEW_RETRY_DELAY_MS)
+    }
+  })
+}
+
+onMounted(() => {
+  nextTick(() => {
+    setupViewportResizeObserver()
+    applyPreviewFitView()
+  })
+})
+
+watch([loading, errorMessage], () => {
+  nextTick(() => {
+    setupViewportResizeObserver()
+    applyPreviewFitView()
+  })
+})
+
+watch(
+  [
+    () => props.autoScale,
+    viewportWidth,
+    resolvedCanvasWidth,
+    resolvedCanvasHeight,
+    () => flowData.value
+  ],
+  () => {
+    nextTick(() => {
+      applyPreviewFitView()
+    })
+  },
+  { deep: true }
+)
+
+watch(
+  [
+    debugLayoutEnabled,
+    resolvedType,
+    resolvedHeightMode,
+    () => props.autoScale,
+    viewportWidth,
+    estimatedCanvasWidth,
+    estimatedCanvasHeight,
+    resolvedCanvasWidth,
+    resolvedCanvasHeight,
+    estimatedWidthScale,
+    previewViewportHeight
+  ],
+  () => {
+    if (!import.meta.client || !debugLayoutEnabled.value) {
+      return
+    }
+    console.info('[FlowPreview][layout-debug]', {
+      type: resolvedType.value,
+      heightMode: resolvedHeightMode.value,
+      autoScale: props.autoScale,
+      viewportWidth: viewportWidth.value,
+      estimatedCanvasWidth: estimatedCanvasWidth.value,
+      estimatedCanvasHeight: estimatedCanvasHeight.value,
+      resolvedCanvasWidth: resolvedCanvasWidth.value,
+      resolvedCanvasHeight: resolvedCanvasHeight.value,
+      estimatedWidthScale: Number(estimatedWidthScale.value.toFixed(4)),
+      fitViewAvailable: !!(previewRef.value && typeof (previewRef.value as any).fitView === 'function'),
+      previewViewportHeight: previewViewportHeight.value
+    })
+  },
+  { immediate: true }
+)
+
+onBeforeUnmount(() => {
+  viewportResizeObserver?.disconnect()
+  viewportResizeObserver = null
+})
+
+// 导出数据
 const exportData = () => {
   if (previewRef.value) {
     const data = previewRef.value.getGraphData()
@@ -148,15 +365,22 @@ const exportData = () => {
       <div v-if="loading" class="loading">加载中...</div>
       <div v-else-if="errorMessage" class="error">{{ errorMessage }}</div>
       <div v-else-if="assetIssueMessage" class="asset-warning">{{ assetIssueMessage }}（已采用兼容渲染）</div>
-      <YysEditorPreview
+      <div
         v-if="!loading && !errorMessage"
-        ref="previewRef"
-        mode="preview"
-        :capability="resolvedCapability"
-        :data="flowData"
-        :height="height"
-        :show-mini-map="showMiniMap"
-      />
+        ref="canvasViewportRef"
+        class="flow-canvas-viewport"
+        :style="{ height: previewHeight }"
+      >
+        <YysEditorPreview
+          ref="previewRef"
+          mode="preview"
+          :capability="resolvedCapability"
+          :data="flowData"
+          :width="resolvedCanvasWidth"
+          :height="resolvedCanvasHeight"
+          :show-mini-map="showMiniMap"
+        />
+      </div>
       <div v-if="!loading && !errorMessage" class="flow-actions">
         <button @click="exportData" class="export-btn">
           导出
@@ -177,6 +401,12 @@ const exportData = () => {
   margin: 20px 0;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.flow-canvas-viewport {
+  width: 100%;
   overflow: hidden;
 }
 

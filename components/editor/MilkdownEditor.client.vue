@@ -2,7 +2,7 @@
 import { h, nextTick, onBeforeUnmount, onMounted, ref, render, shallowRef, watch } from 'vue'
 import '@milkdown/theme-nord/style.css'
 import '@milkdown/kit/prose/gapcursor/style/gapcursor.css'
-import { normalizeGraphForPreview, normalizeGraphData, type GraphData } from '~/utils/flow-preview'
+import { normalizeGraphForPreview, normalizeGraphData, resolveGraphBounds, type GraphData } from '~/utils/flow-preview'
 import { ONMYOJI_EDITOR_LANGUAGE, buildOnmyojiEditorBlockFence } from '~/utils/onmyoji-editor-syntax'
 
 type InlineFlowBlockPayload = {
@@ -129,6 +129,16 @@ const isCommandUsable = (command: any): boolean => {
 const normalizeMarkdown = (value: string): string => value.replace(/\r\n/g, '\n')
 const EMPTY_GRAPH_DATA: GraphData = { nodes: [], edges: [] }
 const DEFAULT_FLOW_PREVIEW_HEIGHT = 260
+const INLINE_FLOW_MIN_PREVIEW_HEIGHT = 220
+const INLINE_FLOW_MIN_CANVAS_WIDTH = 360
+const INLINE_FLOW_MIN_CANVAS_HEIGHT = 220
+const INLINE_FLOW_PADDING = 80
+const INLINE_FLOW_GRAPH_PADDING = 120
+const INLINE_FLOW_SAFE_PADDING = 48
+const INLINE_FLOW_FIT_VERTICAL_OFFSET = 56
+const INLINE_FLOW_FIT_HORIZONTAL_OFFSET = 96
+const INLINE_FLOW_FIT_RETRY_LIMIT = 6
+const INLINE_FLOW_FIT_RETRY_DELAY_MS = 30
 
 const resolvePreviewHeight = (input: any, fallback = DEFAULT_FLOW_PREVIEW_HEIGHT): number => {
   if (!input || typeof input !== 'object') {
@@ -147,9 +157,63 @@ const resolvePreviewHeight = (input: any, fallback = DEFAULT_FLOW_PREVIEW_HEIGHT
   return fallback
 }
 
-const parseFlowGraphData = (raw: string): { graphData: GraphData; previewHeight: number; error: string } => {
+const resolveRenderHeight = (input: any, fallback = DEFAULT_FLOW_PREVIEW_HEIGHT): number | 'auto' => {
+  if (!input || typeof input !== 'object') {
+    return fallback
+  }
+  const rawHeight = (input as Record<string, unknown>).height
+  if (typeof rawHeight === 'string' && rawHeight.trim().toLowerCase() === 'auto') {
+    return 'auto'
+  }
+  return resolvePreviewHeight(input, fallback)
+}
+
+const resolveInlineEstimatedCanvasSize = (graphData: GraphData): { width: number; height: number } => {
+  const bounds = resolveGraphBounds(graphData)
+  if (!bounds) {
+    return {
+      width: INLINE_FLOW_MIN_CANVAS_WIDTH,
+      height: INLINE_FLOW_MIN_CANVAS_HEIGHT
+    }
+  }
+  const boundsBasedWidth = bounds.width + INLINE_FLOW_GRAPH_PADDING
+  const originBasedWidth = bounds.maxX + INLINE_FLOW_GRAPH_PADDING
+  const boundsBasedHeight = bounds.height + INLINE_FLOW_GRAPH_PADDING
+  const originBasedHeight = bounds.maxY + INLINE_FLOW_GRAPH_PADDING
+  return {
+    width: Math.max(
+      INLINE_FLOW_MIN_CANVAS_WIDTH,
+      Math.ceil(Math.max(boundsBasedWidth, originBasedWidth) + INLINE_FLOW_SAFE_PADDING)
+    ),
+    height: Math.max(
+      INLINE_FLOW_MIN_CANVAS_HEIGHT,
+      Math.ceil(Math.max(boundsBasedHeight, originBasedHeight) + INLINE_FLOW_SAFE_PADDING)
+    )
+  }
+}
+
+const resolveInlineAutoPreviewHeight = (graphData: GraphData): number => {
+  const normalized = normalizeGraphForPreview(graphData, INLINE_FLOW_PADDING)
+  const estimated = resolveInlineEstimatedCanvasSize(normalized)
+  return Math.max(
+    INLINE_FLOW_MIN_PREVIEW_HEIGHT,
+    estimated.height
+  )
+}
+
+const isFlowDebugEnabled = (): boolean => {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  const params = new URLSearchParams(window.location.search)
+  const raw = params.get('flowDebug') ?? params.get('flow_debug') ?? ''
+  const normalized = raw.trim().toLowerCase()
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on'
+}
+
+const parseFlowGraphData = (raw: string): { graphData: GraphData; previewHeight: number; renderHeight: number | 'auto'; error: string } => {
   if (!raw.trim()) {
-    return { graphData: EMPTY_GRAPH_DATA, previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT, error: '' }
+    return { graphData: EMPTY_GRAPH_DATA, previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT, renderHeight: DEFAULT_FLOW_PREVIEW_HEIGHT, error: '' }
   }
 
   try {
@@ -157,12 +221,14 @@ const parseFlowGraphData = (raw: string): { graphData: GraphData; previewHeight:
     return {
       graphData: normalizeGraphData(parsed),
       previewHeight: resolvePreviewHeight(parsed),
+      renderHeight: resolveRenderHeight(parsed),
       error: ''
     }
   } catch {
     return {
       graphData: EMPTY_GRAPH_DATA,
       previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT,
+      renderHeight: DEFAULT_FLOW_PREVIEW_HEIGHT,
       error: '流程块 JSON 解析失败，点击“编辑流程块”后可重新保存覆盖。'
     }
   }
@@ -219,6 +285,10 @@ class FlowBlockNodeView {
   private node: any
   private readonly view: any
   private readonly getPos: boolean | (() => number | undefined)
+  private previewResizeObserver: ResizeObserver | null = null
+  private lastPreviewHostWidth = 0
+  private previewComponentRef: any = null
+  private fitViewRetryTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(node: any, view: any, getPos: boolean | (() => number | undefined)) {
     this.node = node
@@ -276,6 +346,7 @@ class FlowBlockNodeView {
     this.dom.appendChild(this.previewHost)
     this.dom.appendChild(this.statusNode)
 
+    this.setupPreviewResizeObserver()
     this.renderNode(node)
   }
 
@@ -306,12 +377,35 @@ class FlowBlockNodeView {
   }
 
   destroy() {
+    this.previewResizeObserver?.disconnect()
+    this.previewResizeObserver = null
+    this.previewComponentRef = null
+    if (this.fitViewRetryTimer) {
+      clearTimeout(this.fitViewRetryTimer)
+      this.fitViewRetryTimer = null
+    }
     this.editButton.removeEventListener('click', this.handleEdit)
     this.cutButton.removeEventListener('click', this.handleCut)
     this.deleteButton.removeEventListener('click', this.handleDelete)
     this.moveUpButton.removeEventListener('click', this.handleMoveUp)
     this.moveDownButton.removeEventListener('click', this.handleMoveDown)
     render(null, this.previewHost)
+  }
+
+  private setupPreviewResizeObserver() {
+    if (typeof ResizeObserver === 'undefined') {
+      return
+    }
+    this.previewResizeObserver?.disconnect()
+    this.previewResizeObserver = new ResizeObserver(() => {
+      const hostWidth = Math.max(0, Math.round(this.previewHost.clientWidth))
+      if (hostWidth <= 0 || hostWidth === this.lastPreviewHostWidth) {
+        return
+      }
+      this.lastPreviewHostWidth = hostWidth
+      this.renderNode(this.node)
+    })
+    this.previewResizeObserver.observe(this.previewHost)
   }
 
   private resolveCurrentBlockIndex(): number {
@@ -370,10 +464,27 @@ class FlowBlockNodeView {
   }
 
   private renderNode(node: any) {
+    if (this.fitViewRetryTimer) {
+      clearTimeout(this.fitViewRetryTimer)
+      this.fitViewRetryTimer = null
+    }
+
     const rawText = node?.textContent ?? ''
     const parsed = parseFlowGraphData(rawText)
     const previewKey = hashText(rawText)
+    const previewData = normalizeGraphForPreview(parsed.graphData, INLINE_FLOW_PADDING)
+    const estimatedCanvas = resolveInlineEstimatedCanvasSize(previewData)
+    const baseRenderHeight = parsed.renderHeight === 'auto'
+      ? resolveInlineAutoPreviewHeight(parsed.graphData)
+      : parsed.renderHeight
+    const hostWidth = Math.max(1, Math.round(this.previewHost.clientWidth) || INLINE_FLOW_MIN_CANVAS_WIDTH)
+    this.lastPreviewHostWidth = hostWidth
+    const safeHostWidth = Math.max(1, hostWidth - 2)
+    const widthScale = estimatedCanvas.width <= safeHostWidth ? 1 : safeHostWidth / estimatedCanvas.width
+    const scaledHeight = Math.max(INLINE_FLOW_MIN_PREVIEW_HEIGHT, Math.ceil(baseRenderHeight * widthScale))
+    this.previewHost.style.height = `${scaledHeight}px`
     if (!flowPreviewComponent.value) {
+      this.previewComponentRef = null
       this.previewHost.textContent = '流程图组件加载中...'
       if (parsed.error) {
         this.statusNode.textContent = parsed.error
@@ -386,15 +497,76 @@ class FlowBlockNodeView {
     }
 
     render(
-      h(flowPreviewComponent.value, {
-        key: previewKey,
-        mode: 'preview',
-        capability: 'render-only',
-        data: normalizeGraphForPreview(parsed.graphData),
-        height: parsed.previewHeight
-      }),
+      h('div', {
+        class: 'flow-nodeview-preview-stage',
+        style: {
+          width: '100%',
+          height: `${scaledHeight}px`
+        }
+      }, [
+        h(flowPreviewComponent.value, {
+          key: previewKey,
+          ref: (instance: any) => {
+            this.previewComponentRef = instance
+          },
+          mode: 'preview',
+          capability: 'render-only',
+          data: previewData,
+          width: hostWidth,
+          height: scaledHeight
+        })
+      ]),
       this.previewHost
     )
+
+    const applyFitViewWithRetry = (attempt = 0) => {
+      const fitViewAvailable = !!(this.previewComponentRef && typeof this.previewComponentRef.fitView === 'function')
+      const fitViewApplied = fitViewAvailable
+        ? this.previewComponentRef.fitView(INLINE_FLOW_FIT_VERTICAL_OFFSET, INLINE_FLOW_FIT_HORIZONTAL_OFFSET)
+        : false
+
+      if ((!fitViewAvailable || !fitViewApplied) && attempt < INLINE_FLOW_FIT_RETRY_LIMIT) {
+        this.fitViewRetryTimer = setTimeout(() => {
+          applyFitViewWithRetry(attempt + 1)
+        }, INLINE_FLOW_FIT_RETRY_DELAY_MS)
+      } else {
+        this.fitViewRetryTimer = null
+      }
+
+      if (!isFlowDebugEnabled()) {
+        return
+      }
+
+      const blockIndex = this.resolveCurrentBlockIndex()
+      const hostHeight = Math.max(0, Math.round(this.previewHost.clientHeight))
+      const actualCanvasWidth = (this.previewHost.querySelector('.yys-editor-embed') as HTMLElement | null)?.clientWidth || 0
+      const actualCanvasHeight = (this.previewHost.querySelector('.yys-editor-embed') as HTMLElement | null)?.clientHeight || 0
+      console.info('[Editor][flow-debug][inline-preview]', {
+        blockIndex,
+        sourceHeight: parsed.renderHeight,
+        hostWidth,
+        baseRenderHeight,
+        estimatedCanvasWidth: estimatedCanvas.width,
+        estimatedCanvasHeight: estimatedCanvas.height,
+        widthScale: Number(widthScale.toFixed(4)),
+        scaledHeight,
+        hostHeight,
+        actualCanvasWidth,
+        actualCanvasHeight,
+        fitViewAvailable,
+        fitViewApplied,
+        fitViewAttempt: attempt + 1,
+        graphBounds: resolveGraphBounds(previewData)
+      })
+    }
+
+    requestAnimationFrame(() => {
+      applyFitViewWithRetry(0)
+    })
+
+    if (isFlowDebugEnabled()) {
+      // debug log is emitted after fitView pass
+    }
 
     if (parsed.error) {
       this.statusNode.textContent = parsed.error
@@ -799,6 +971,7 @@ defineExpose<MilkdownEditorHandle>({
   font-size: 12px;
   color: #1f2937;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  pointer-events: auto;
 }
 
 :deep(.flow-nodeview-action.is-edit:hover) {
@@ -820,8 +993,13 @@ defineExpose<MilkdownEditorHandle>({
 }
 
 :deep(.flow-nodeview-preview) {
-  min-height: 220px;
   background: #fff;
+  overflow: hidden;
+}
+
+:deep(.flow-nodeview-preview-stage) {
+  position: relative;
+  will-change: transform;
 }
 
 :deep(.flow-nodeview-status) {

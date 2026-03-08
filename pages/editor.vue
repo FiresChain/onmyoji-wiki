@@ -6,7 +6,7 @@ import '@rookie4show/onmyoji-flow/style.css'
 import JSZip from 'jszip'
 import { FileSystemEditorStorageAdapter } from '~/utils/editor-storage/file-system'
 import { LOCAL_STORAGE_BACKUP_KEY, LOCAL_STORAGE_KEY, LocalStorageEditorStorageAdapter } from '~/utils/editor-storage/local-storage'
-import { normalizeGraphData, type GraphData } from '~/utils/flow-preview'
+import { normalizeGraphData, resolveGraphBounds, type GraphData } from '~/utils/flow-preview'
 import { validateGraphGroupRules } from '~/utils/flow-rules'
 import { collectFlowAssetIssues } from '~/utils/flow-assets'
 import {
@@ -18,8 +18,7 @@ import {
 } from '~/utils/onmyoji-editor-syntax'
 
 definePageMeta({
-  path: '/:locale(zh|zh-tw|ja|vi|ko|en)/editor',
-  alias: ['/editor']
+  path: '/:locale(zh|zh-tw|ja|vi|ko|en)/editor'
 })
 
 type FlowBlock = {
@@ -28,6 +27,7 @@ type FlowBlock = {
   graphData: GraphData
   rawPayload: any
   previewHeight: number
+  isAutoHeight: boolean
   error: string
 }
 
@@ -54,7 +54,7 @@ type InlineFlowBlockMovePayload = {
 type FlowBundleReference = {
   blockIndex: number
   filePath: string
-  previewHeight: number
+  previewHeight: number | 'auto'
 }
 
 type EditorViewMode = 'visual' | 'markdown' | 'split'
@@ -75,6 +75,9 @@ const DEFAULT_MARKDOWN = `# Onmyoji Wiki Editor
 const EMPTY_GRAPH_DATA: GraphData = { nodes: [], edges: [] }
 const FLOW_BLOCK_REGEX = ONMYOJI_EDITOR_BLOCK_REGEX
 const DEFAULT_FLOW_PREVIEW_HEIGHT = 260
+const FLOW_DEBUG_MIN_CANVAS_WIDTH = 360
+const FLOW_DEBUG_MIN_CANVAS_HEIGHT = 220
+const FLOW_DEBUG_GRAPH_PADDING = 120
 const FLOW_HEIGHT_TEST_GRAPH_DATA: GraphData = {
   nodes: [
     {
@@ -114,20 +117,95 @@ const flowEditorVisible = ref(false)
 const editingBlockIndex = ref<number | null>(null)
 const editingGraphData = ref<GraphData>(EMPTY_GRAPH_DATA)
 const editingPreviewHeight = ref(DEFAULT_FLOW_PREVIEW_HEIGHT)
+const editingAutoHeight = ref(false)
 const flowEditorRef = ref<any>(null)
 const flowModalBodyRef = ref<HTMLElement | null>(null)
-const flowEditorWidth = ref('100%')
-const flowEditorHeight = ref('600px')
+const flowEditorWidth = ref('0px')
+const flowEditorHeight = ref('0px')
+const flowEditorViewportWidth = ref(0)
+const flowEditorViewportHeight = ref(0)
 const milkdownRef = ref<MilkdownEditorHandle | null>(null)
 const editorViewMode = ref<EditorViewMode>('visual')
 const runtimeConfig = useRuntimeConfig()
 const flowClipboardMarkdown = ref('')
+const route = useRoute()
 
 const importInput = ref<HTMLInputElement | null>(null)
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
 let flowResizeInterval: ReturnType<typeof setInterval> | null = null
 let flowModalResizeObserver: ResizeObserver | null = null
 let hydrated = false
+
+const isTruthyDebugQuery = (value: unknown): boolean => {
+  const normalized = String(value ?? '').trim().toLowerCase()
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on'
+}
+
+const flowDebugEnabled = computed(() => {
+  const raw = route.query.flowDebug ?? route.query.flow_debug
+  const first = Array.isArray(raw) ? raw[0] : raw
+  return isTruthyDebugQuery(first)
+})
+
+const editingGraphBounds = computed(() => resolveGraphBounds(normalizeGraphData(editingGraphData.value)))
+const editingEstimatedCanvasWidth = computed(() => {
+  const bounds = editingGraphBounds.value
+  if (!bounds) {
+    return FLOW_DEBUG_MIN_CANVAS_WIDTH
+  }
+  const boundsBasedWidth = bounds.width + FLOW_DEBUG_GRAPH_PADDING
+  const originBasedWidth = bounds.maxX + FLOW_DEBUG_GRAPH_PADDING
+  return Math.max(FLOW_DEBUG_MIN_CANVAS_WIDTH, Math.ceil(Math.max(boundsBasedWidth, originBasedWidth)))
+})
+const editingEstimatedCanvasHeight = computed(() => {
+  const bounds = editingGraphBounds.value
+  if (!bounds) {
+    return FLOW_DEBUG_MIN_CANVAS_HEIGHT
+  }
+  const boundsBasedHeight = bounds.height + FLOW_DEBUG_GRAPH_PADDING
+  const originBasedHeight = bounds.maxY + FLOW_DEBUG_GRAPH_PADDING
+  return Math.max(FLOW_DEBUG_MIN_CANVAS_HEIGHT, Math.ceil(Math.max(boundsBasedHeight, originBasedHeight)))
+})
+const parsePixelDimension = (input: string): number => {
+  const matched = /^\s*(\d+(?:\.\d+)?)px\s*$/i.exec(input || '')
+  if (!matched) {
+    return 0
+  }
+  const parsed = Number.parseFloat(matched[1] || '')
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+}
+const modalHostWidth = computed(() => {
+  if (flowEditorViewportWidth.value > 0) {
+    return flowEditorViewportWidth.value
+  }
+  return parsePixelDimension(flowEditorWidth.value)
+})
+const modalHostHeight = computed(() => {
+  if (flowEditorViewportHeight.value > 0) {
+    return flowEditorViewportHeight.value
+  }
+  return parsePixelDimension(flowEditorHeight.value)
+})
+const modalEditorRenderWidth = computed(() => {
+  return parsePixelDimension(flowEditorWidth.value)
+})
+const modalWidthScale = computed(() => {
+  const hostWidth = modalEditorRenderWidth.value > 0 ? modalEditorRenderWidth.value : modalHostWidth.value
+  if (hostWidth <= 0) {
+    return 1
+  }
+  if (editingEstimatedCanvasWidth.value <= hostWidth) {
+    return 1
+  }
+  return hostWidth / editingEstimatedCanvasWidth.value
+})
+const modalScaledHeight = computed(() => Math.ceil(editingEstimatedCanvasHeight.value * modalWidthScale.value))
+const editingBlockSnapshot = computed(() => {
+  if (editingBlockIndex.value === null) {
+    return null
+  }
+  return flowBlocks.value.find((block) => block.blockIndex === editingBlockIndex.value) || null
+})
 
 const lockBodyScroll = () => {
   if (typeof window === 'undefined') {
@@ -210,16 +288,18 @@ const canPasteFlowBlock = computed(() => flowClipboardMarkdown.value.trim().leng
 const updateFlowEditorViewportSize = () => {
   const host = flowModalBodyRef.value
   if (!host) {
+    flowEditorViewportWidth.value = 0
+    flowEditorViewportHeight.value = 0
+    flowEditorWidth.value = '0px'
+    flowEditorHeight.value = '0px'
     return
   }
-  const width = host.clientWidth
-  const height = host.clientHeight
-  if (width > 0) {
-    flowEditorWidth.value = `${width}px`
-  }
-  if (height > 0) {
-    flowEditorHeight.value = `${height}px`
-  }
+  const width = Math.max(0, Math.round(host.clientWidth))
+  const height = Math.max(0, Math.round(host.clientHeight))
+  flowEditorViewportWidth.value = width
+  flowEditorViewportHeight.value = height
+  flowEditorWidth.value = width > 0 ? `${width}px` : '0px'
+  flowEditorHeight.value = height > 0 ? `${height}px` : '0px'
 }
 
 const setupFlowModalResizeObserver = () => {
@@ -252,9 +332,17 @@ const resolvePreviewHeight = (input: any, fallback = DEFAULT_FLOW_PREVIEW_HEIGHT
   return fallback
 }
 
-const parseFlowBlock = (raw: string): { data: GraphData; rawPayload: any; previewHeight: number; error: string } => {
+const resolveIsAutoHeight = (input: any): boolean => {
+  if (!input || typeof input !== 'object') {
+    return false
+  }
+  const rawHeight = (input as Record<string, unknown>).height
+  return typeof rawHeight === 'string' && rawHeight.trim().toLowerCase() === 'auto'
+}
+
+const parseFlowBlock = (raw: string): { data: GraphData; rawPayload: any; previewHeight: number; isAutoHeight: boolean; error: string } => {
   if (!raw.trim()) {
-    return { data: EMPTY_GRAPH_DATA, rawPayload: null, previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT, error: '' }
+    return { data: EMPTY_GRAPH_DATA, rawPayload: null, previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT, isAutoHeight: false, error: '' }
   }
 
   try {
@@ -263,6 +351,7 @@ const parseFlowBlock = (raw: string): { data: GraphData; rawPayload: any; previe
       data: normalizeGraphData(parsed),
       rawPayload: parsed,
       previewHeight: resolvePreviewHeight(parsed),
+      isAutoHeight: resolveIsAutoHeight(parsed),
       error: ''
     }
   } catch {
@@ -270,6 +359,7 @@ const parseFlowBlock = (raw: string): { data: GraphData; rawPayload: any; previe
       data: EMPTY_GRAPH_DATA,
       rawPayload: null,
       previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT,
+      isAutoHeight: false,
       error: '流程块 JSON 解析失败，打开编辑器后可重新保存覆盖。'
     }
   }
@@ -300,6 +390,7 @@ const parseFlowBlocks = (source: string): FlowBlock[] => {
       graphData: parsed.data,
       rawPayload: parsed.rawPayload,
       previewHeight: parsed.previewHeight,
+      isAutoHeight: parsed.isAutoHeight,
       error: parsed.error
     })
 
@@ -398,7 +489,7 @@ const deepClone = <T>(input: T): T => {
   return JSON.parse(JSON.stringify(input)) as T
 }
 
-const toFlowDemoLikePayload = (graphData: GraphData, previewHeight = DEFAULT_FLOW_PREVIEW_HEIGHT): Record<string, unknown> => ({
+const toFlowDemoLikePayload = (graphData: GraphData, previewHeight: number | 'auto' = DEFAULT_FLOW_PREVIEW_HEIGHT): Record<string, unknown> => ({
   height: previewHeight,
   schemaVersion: 1,
   fileList: [
@@ -415,7 +506,7 @@ const toFlowDemoLikePayload = (graphData: GraphData, previewHeight = DEFAULT_FLO
   activeFile: 'File 1'
 })
 
-const serializeFlowPayload = (rawPayload: any, graphData: GraphData, previewHeight = DEFAULT_FLOW_PREVIEW_HEIGHT): string => {
+const serializeFlowPayload = (rawPayload: any, graphData: GraphData, previewHeight: number | 'auto' = DEFAULT_FLOW_PREVIEW_HEIGHT): string => {
   if (rawPayload && typeof rawPayload === 'object' && Array.isArray(rawPayload.fileList) && rawPayload.fileList.length > 0) {
     const nextPayload = deepClone(rawPayload) as Record<string, any>
     nextPayload.height = previewHeight
@@ -440,7 +531,7 @@ const wrapFlowPayloadCodeBlock = (payload: string): string => (
   buildOnmyojiEditorBlockFence(payload)
 )
 
-const buildFlowPreviewReferenceBlock = (filePath: string, previewHeight: number): string => (
+const buildFlowPreviewReferenceBlock = (filePath: string, previewHeight: number | 'auto'): string => (
   buildOnmyojiEditorFileFence(`./${filePath}`, previewHeight)
 )
 
@@ -726,6 +817,7 @@ const openFlowBlockEditor = (block: FlowBlock) => {
   editingBlockIndex.value = block.blockIndex
   editingGraphData.value = JSON.parse(JSON.stringify(block.graphData))
   editingPreviewHeight.value = block.previewHeight
+  editingAutoHeight.value = block.isAutoHeight
   if (block.error) {
     operationMessage.value = `${block.error} 打开后可重新编辑并保存。`
   }
@@ -733,12 +825,15 @@ const openFlowBlockEditor = (block: FlowBlock) => {
 }
 
 const handleInlineFlowBlockEdit = (payload: InlineFlowBlockPayload) => {
+  const currentBlock = flowBlocks.value.find((item) => item.blockIndex === payload.blockIndex)
   openFlowBlockEditor({
     key: `flow-${payload.blockIndex}`,
     blockIndex: payload.blockIndex,
     graphData: normalizeGraphData(payload.graphData),
-    previewHeight: payload.previewHeight,
-    error: payload.error || ''
+    rawPayload: currentBlock?.rawPayload || null,
+    previewHeight: currentBlock?.previewHeight || payload.previewHeight,
+    isAutoHeight: currentBlock?.isAutoHeight || false,
+    error: payload.error || currentBlock?.error || ''
   })
 }
 
@@ -802,25 +897,31 @@ const handleInlineFlowBlockMove = (payload: InlineFlowBlockMovePayload) => {
   moveFlowBlock(payload.blockIndex, payload.direction)
 }
 
-const updateFlowBlockHeight = (blockIndex: number, nextHeight: number) => {
+const updateFlowBlockHeight = (blockIndex: number, nextHeight: number | 'auto') => {
   const block = flowBlocks.value.find((item) => item.blockIndex === blockIndex)
   if (!block) {
     return
   }
 
-  const normalizedHeight = Number.isFinite(nextHeight) ? Math.max(120, Math.min(2000, Math.round(nextHeight))) : DEFAULT_FLOW_PREVIEW_HEIGHT
+  const isAutoHeight = nextHeight === 'auto'
+  const normalizedHeight = isAutoHeight
+    ? DEFAULT_FLOW_PREVIEW_HEIGHT
+    : (Number.isFinite(nextHeight) ? Math.max(120, Math.min(2000, Math.round(nextHeight))) : DEFAULT_FLOW_PREVIEW_HEIGHT)
   const graphData = normalizeGraphData(block.graphData)
   const rawPayload = block.rawPayload && typeof block.rawPayload === 'object'
     ? deepClone(block.rawPayload)
     : toFlowDemoLikePayload(graphData, normalizedHeight)
-  const flowPayload = serializeFlowPayload(rawPayload, graphData, normalizedHeight)
+  const flowPayload = serializeFlowPayload(rawPayload, graphData, isAutoHeight ? 'auto' : normalizedHeight)
   const serialized = wrapFlowPayloadCodeBlock(flowPayload)
   markdown.value = replaceFlowBlock(markdown.value, blockIndex, serialized)
 
   if (editingBlockIndex.value === blockIndex) {
+    editingAutoHeight.value = isAutoHeight
     editingPreviewHeight.value = normalizedHeight
   }
-  operationMessage.value = `流程块 #${blockIndex + 1} 高度已更新为 ${normalizedHeight}px。`
+  operationMessage.value = isAutoHeight
+    ? `流程块 #${blockIndex + 1} 高度已切换为 auto。`
+    : `流程块 #${blockIndex + 1} 高度已更新为 ${normalizedHeight}px。`
 }
 
 const onFlowHeightInputChange = (blockIndex: number, event: Event) => {
@@ -829,10 +930,30 @@ const onFlowHeightInputChange = (blockIndex: number, event: Event) => {
   updateFlowBlockHeight(blockIndex, value)
 }
 
+const onFlowAutoToggle = (blockIndex: number, checked: boolean) => {
+  if (checked) {
+    updateFlowBlockHeight(blockIndex, 'auto')
+    return
+  }
+  const block = flowBlocks.value.find((item) => item.blockIndex === blockIndex)
+  const fallback = block?.previewHeight || DEFAULT_FLOW_PREVIEW_HEIGHT
+  updateFlowBlockHeight(blockIndex, fallback)
+}
+
+const onFlowAutoCheckboxChange = (blockIndex: number, event: Event) => {
+  const target = event.target as HTMLInputElement | null
+  onFlowAutoToggle(blockIndex, !!target?.checked)
+}
+
 const closeFlowBlockEditor = () => {
   flowEditorVisible.value = false
   editingBlockIndex.value = null
   editingPreviewHeight.value = DEFAULT_FLOW_PREVIEW_HEIGHT
+  editingAutoHeight.value = false
+  flowEditorViewportWidth.value = 0
+  flowEditorViewportHeight.value = 0
+  flowEditorWidth.value = '0px'
+  flowEditorHeight.value = '0px'
 }
 
 const waitForEditorFlush = async () => {
@@ -861,8 +982,9 @@ const applyFlowBlockChanges = async () => {
     ? Math.max(120, Math.min(2000, Math.round(editingPreviewHeight.value)))
     : DEFAULT_FLOW_PREVIEW_HEIGHT
   editingPreviewHeight.value = normalizedPreviewHeight
+  const nextHeight: number | 'auto' = editingAutoHeight.value ? 'auto' : normalizedPreviewHeight
   const currentBlock = flowBlocks.value.find((item) => item.blockIndex === editingBlockIndex.value) || null
-  const flowPayload = serializeFlowPayload(currentBlock?.rawPayload, normalizedGraphData, normalizedPreviewHeight)
+  const flowPayload = serializeFlowPayload(currentBlock?.rawPayload, normalizedGraphData, nextHeight)
   const serialized = wrapFlowPayloadCodeBlock(flowPayload)
   markdown.value = replaceFlowBlock(markdown.value, editingBlockIndex.value, serialized)
   flowEditorVisible.value = false
@@ -1019,11 +1141,11 @@ const exportBundleZip = async () => {
       flowReferences.push({
         blockIndex: block.blockIndex,
         filePath: fileName,
-        previewHeight: block.previewHeight
+        previewHeight: block.isAutoHeight ? 'auto' : block.previewHeight
       })
       blockManifest.push({
         blockIndex: block.blockIndex,
-        height: block.previewHeight,
+        height: block.isAutoHeight ? 'auto' : block.previewHeight,
         file: fileName,
         hasParseError: !!block.error
       })
@@ -1103,6 +1225,52 @@ watch(editorViewMode, async (mode) => {
   }
   milkdownRef.value.focus()
 })
+
+watch(
+  [
+    flowDebugEnabled,
+    flowEditorVisible,
+    editingBlockIndex,
+    editingPreviewHeight,
+    editingAutoHeight,
+    flowEditorWidth,
+    flowEditorHeight,
+    editingEstimatedCanvasWidth,
+    editingEstimatedCanvasHeight,
+    modalWidthScale,
+    modalScaledHeight
+  ],
+  () => {
+    if (!import.meta.client || !flowDebugEnabled.value || !flowEditorVisible.value) {
+      return
+    }
+    if (modalHostWidth.value <= 0 || modalHostHeight.value <= 0) {
+      return
+    }
+
+    console.info('[Editor][flow-debug][modal]', {
+      blockIndex: editingBlockIndex.value,
+      sourceHeight: editingBlockSnapshot.value?.isAutoHeight ? 'auto' : editingBlockSnapshot.value?.previewHeight,
+      editingHeightInput: editingAutoHeight.value ? 'auto' : editingPreviewHeight.value,
+      hostWidth: modalHostWidth.value,
+      hostHeight: modalHostHeight.value,
+      editorRenderWidth: modalEditorRenderWidth.value,
+      estimatedCanvasWidth: editingEstimatedCanvasWidth.value,
+      estimatedCanvasHeight: editingEstimatedCanvasHeight.value,
+      widthScale: Number(modalWidthScale.value.toFixed(4)),
+      scaledHeight: modalScaledHeight.value,
+      graphBounds: editingGraphBounds.value
+    })
+  },
+  { immediate: true }
+)
+
+watch(flowDebugEnabled, (enabled) => {
+  if (!import.meta.client || !enabled) {
+    return
+  }
+  console.info('[Editor][flow-debug] enabled. Open a flow block editor modal to inspect layout metrics.')
+}, { immediate: true })
 
 onBeforeUnmount(() => {
   unlockBodyScroll()
@@ -1238,6 +1406,14 @@ onBeforeUnmount(() => {
 	              <strong>流程块 #{{ block.blockIndex + 1 }}</strong>
 	              <p class="flow-meta">
                   预览高度:
+                  <label class="flow-auto-toggle">
+                    <input
+                      type="checkbox"
+                      :checked="block.isAutoHeight"
+                      @change="onFlowAutoCheckboxChange(block.blockIndex, $event)"
+                    >
+                    auto
+                  </label>
                   <input
                     type="number"
                     min="120"
@@ -1245,6 +1421,7 @@ onBeforeUnmount(() => {
                     step="10"
                     class="flow-height-input"
                     :value="block.previewHeight"
+                    :disabled="block.isAutoHeight"
                     @change="onFlowHeightInputChange(block.blockIndex, $event)"
                   >
                 </p>
@@ -1270,12 +1447,20 @@ onBeforeUnmount(() => {
           <div class="flow-modal-actions">
             <label class="flow-modal-height">
               高度
+              <span class="flow-auto-toggle">
+                <input
+                  v-model="editingAutoHeight"
+                  type="checkbox"
+                >
+                auto
+              </span>
               <input
                 v-model.number="editingPreviewHeight"
                 type="number"
                 min="120"
                 max="2000"
                 step="10"
+                :disabled="editingAutoHeight"
               >
             </label>
             <button type="button" @click="closeFlowBlockEditor">取消</button>
@@ -1286,6 +1471,7 @@ onBeforeUnmount(() => {
           <div class="flow-modal-editor-host">
             <ClientOnly>
               <YysEditorPreview
+                v-if="modalHostWidth > 0 && modalHostHeight > 0"
                 ref="flowEditorRef"
                 class="flow-modal-editor"
                 mode="edit"
@@ -1294,6 +1480,7 @@ onBeforeUnmount(() => {
                 :height="flowEditorHeight"
                 :width="flowEditorWidth"
               />
+              <div v-else class="flow-modal-editor-loading">正在计算画布尺寸...</div>
             </ClientOnly>
           </div>
         </div>
@@ -1572,6 +1759,9 @@ button:disabled {
   margin: 4px 0 0;
   color: #64748b;
   font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .flow-row-actions {
@@ -1582,7 +1772,20 @@ button:disabled {
 
 .flow-height-input {
   width: 110px;
-  margin-left: 6px;
+}
+
+.flow-height-input:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  border-color: #d1d5db;
+  cursor: not-allowed;
+}
+
+.flow-auto-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #475569;
 }
 
 button.danger {
@@ -1658,6 +1861,15 @@ button.danger:hover {
   display: block;
 }
 
+.flow-modal-editor-loading {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  font-size: 13px;
+  background: #f8fafc;
+}
+
 .flow-modal-header h3 {
   margin: 0;
 }
@@ -1678,6 +1890,13 @@ button.danger:hover {
 
 .flow-modal-height input {
   width: 96px;
+}
+
+.flow-modal-height input:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  border-color: #d1d5db;
+  cursor: not-allowed;
 }
 
 .hidden-input {

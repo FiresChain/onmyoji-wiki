@@ -1,7 +1,6 @@
 <script setup lang="ts">
 definePageMeta({
-  path: '/:locale(zh|en)/shikigami',
-  alias: ['/shikigami']
+  path: '/:locale(zh|en)/shikigami'
 })
 
 type ShikigamiDoc = {

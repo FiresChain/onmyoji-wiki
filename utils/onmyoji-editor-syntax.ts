@@ -82,14 +82,16 @@ export const parseOnmyojiEditorFenceInfo = (info: string): OnmyojiEditorFenceInf
   }
 }
 
-export const buildOnmyojiEditorFileFence = (src: string, height?: number | null): string => {
-  const heightSegment = Number.isFinite(height || NaN) && Number(height) > 0
-    ? ` :height="${Number(height)}"`
-    : ''
+export const buildOnmyojiEditorFileFence = (src: string, height?: number | 'auto' | null): string => {
+  const normalized = typeof height === 'string' ? height.trim().toLowerCase() : height
+  const heightSegment = normalized === 'auto'
+    ? ' :height="auto"'
+    : (Number.isFinite(normalized || NaN) && Number(normalized) > 0
+        ? ` :height="${Number(normalized)}"`
+        : '')
   return `\`\`\`${ONMYOJI_EDITOR_LANGUAGE}{type="file" src="${src}"${heightSegment}}\n\`\`\``
 }
 
 export const buildOnmyojiEditorBlockFence = (payload: string): string => (
   `\`\`\`${ONMYOJI_EDITOR_LANGUAGE}{type="block"}\n${payload}\n\`\`\``
 )
-

@@ -3,8 +3,7 @@ import { loadSearchIndex } from '~/utils/search-index'
 import { getContentLocaleFromPath } from '~/utils/site-locale'
 
 definePageMeta({
-  path: '/:locale(zh|en)/guides',
-  alias: ['/guides']
+  path: '/:locale(zh|en)/guides'
 })
 
 type SearchIndexItem = {

@@ -3,6 +3,15 @@ export type GraphData = {
   edges: any[]
 }
 
+export type GraphBounds = {
+  minX: number
+  minY: number
+  maxX: number
+  maxY: number
+  width: number
+  height: number
+}
+
 const DEFAULT_NODE_WIDTH = 180
 const DEFAULT_NODE_HEIGHT = 100
 const VIEWPORT_PADDING = 80
@@ -25,6 +34,40 @@ const resolveNodeSize = (node: any) => {
   const width = toNumber(node?.width ?? style?.width ?? node?.properties?.width, DEFAULT_NODE_WIDTH)
   const height = toNumber(node?.height ?? style?.height ?? node?.properties?.height, DEFAULT_NODE_HEIGHT)
   return { width, height }
+}
+
+export const resolveGraphBounds = (graphData: GraphData): GraphBounds | null => {
+  if (!graphData || !Array.isArray(graphData.nodes) || graphData.nodes.length === 0) {
+    return null
+  }
+
+  let minX = Number.POSITIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+
+  graphData.nodes.forEach((node) => {
+    const x = toNumber(node?.x, 0)
+    const y = toNumber(node?.y, 0)
+    const { width, height } = resolveNodeSize(node)
+    minX = Math.min(minX, x - width / 2)
+    minY = Math.min(minY, y - height / 2)
+    maxX = Math.max(maxX, x + width / 2)
+    maxY = Math.max(maxY, y + height / 2)
+  })
+
+  if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) {
+    return null
+  }
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: Math.max(0, maxX - minX),
+    height: Math.max(0, maxY - minY)
+  }
 }
 
 export const normalizeGraphData = (input: any): GraphData => {

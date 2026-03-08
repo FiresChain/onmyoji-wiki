@@ -42,11 +42,20 @@ const parsedBlockPayload = computed<Record<string, unknown> | null>(() => {
   }
 })
 
-const resolvedHeight = computed<number>(() => {
+const resolvedHeight = computed<number | 'auto'>(() => {
+  const rawAttrHeight = String(fenceInfo.value.attrs[':height'] ?? fenceInfo.value.attrs.height ?? '').trim().toLowerCase()
+  if (rawAttrHeight === 'auto') {
+    return 'auto'
+  }
+
   if (fenceInfo.value.height && fenceInfo.value.height > 0) {
     return fenceInfo.value.height
   }
+
   const payloadHeight = parsedBlockPayload.value?.height
+  if (typeof payloadHeight === 'string' && payloadHeight.trim().toLowerCase() === 'auto') {
+    return 'auto'
+  }
   if (typeof payloadHeight === 'number' && Number.isFinite(payloadHeight) && payloadHeight > 0) {
     return payloadHeight
   }
@@ -83,4 +92,3 @@ const canRenderBlockFlow = computed(() => (
     <slot />
   </pre>
 </template>
-
