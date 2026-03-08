@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { getAuthorProfile } from '~/utils/author-profiles'
 import { loadSearchIndex } from '~/utils/search-index'
+import { getContentLocaleFromPath } from '~/utils/site-locale'
+
+definePageMeta({
+  path: '/:locale(zh|en)/authors/:id',
+  alias: ['/authors/:id']
+})
 
 type SearchIndexItem = {
   path: string
@@ -30,6 +36,38 @@ type AuthorGuide = {
 
 const route = useRoute()
 const authorId = computed(() => String(route.params.id || '').trim())
+const contentLocale = computed<'zh' | 'en'>(() => getContentLocaleFromPath(route.path) || 'zh')
+const runtimeConfig = useRuntimeConfig()
+const resolvePublicAssetUrl = (path?: string) => {
+  if (!path) {
+    return ''
+  }
+  if (/^https?:\/\//.test(path)) {
+    return path
+  }
+
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path
+  const base = runtimeConfig.app.baseURL || '/'
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`
+  return `${normalizedBase}${normalizedPath}`
+}
+
+const { data: authorStaticDoc } = await useAsyncData(
+  () => `author-static-doc-${authorId.value}-${contentLocale.value}`,
+  async () => {
+    if (!authorId.value) {
+      return null
+    }
+
+    const docs = await queryCollection('authors').all().catch(() => [])
+    return (
+      docs.find((doc) => doc.authorId === authorId.value && doc.lang === contentLocale.value) ||
+      docs.find((doc) => doc.authorId === authorId.value && doc.lang === 'zh') ||
+      null
+    )
+  },
+  { watch: [authorId, contentLocale] }
+)
 
 const { data: indexItems } = await useAsyncData(
   () => `author-index-${authorId.value}`,
@@ -101,11 +139,23 @@ const authorGuides = computed<AuthorGuide[]>(() => {
 })
 
 const guideCount = computed(() => authorGuides.value.length)
-const hasAuthor = computed(() => Boolean(authorId.value) && guideCount.value > 0)
+const hasAuthor = computed(() => Boolean(authorId.value) && (guideCount.value > 0 || Boolean(authorStaticDoc.value)))
+const displayTagline = computed(() => authorStaticDoc.value?.tagline || authorProfile.value.tagline)
+const displayHeroTitle = computed(() => {
+  return authorStaticDoc.value?.heroTitle || `${authorProfile.value.name}的空间`
+})
+const displayHeroSubtitle = computed(() => authorStaticDoc.value?.heroSubtitle || '')
+const bilibiliUrl = computed(() => authorStaticDoc.value?.bilibiliUrl?.trim() || '')
+const displayAvatar = computed(() => resolvePublicAssetUrl(authorProfile.value.avatar?.trim()))
+const isAvatarBroken = ref(false)
+watch(authorId, () => {
+  isAvatarBroken.value = false
+})
 
 const mergedTags = computed(() => {
   const tags = new Set<string>()
   authorProfile.value.specialties.forEach((tag) => tags.add(tag))
+  ;(authorStaticDoc.value?.highlights || []).forEach((tag) => tags.add(tag))
   authorGuides.value.forEach((guide) => {
     guide.tags.forEach((tag) => tags.add(tag))
   })
@@ -117,7 +167,7 @@ const mergedTags = computed(() => {
   <div v-if="hasAuthor">
     <PageHeader
       :title="authorProfile.name"
-      :description="authorProfile.tagline"
+      :description="displayTagline"
       :breadcrumbs="[
         { label: '首页', href: '/' },
         { label: '创作者', href: '/authors' },
@@ -126,37 +176,83 @@ const mergedTags = computed(() => {
     />
 
     <section class="site-container author-detail">
-      <section class="card author-profile">
-        <div class="author-profile-top">
-          <div class="author-avatar">作者</div>
-          <div>
-            <h2>{{ authorProfile.name }}</h2>
-            <p class="tagline">{{ authorProfile.tagline }}</p>
+      <div class="author-main">
+        <section v-if="authorStaticDoc" class="card author-space">
+          <header class="author-space-hero">
+            <h3>{{ displayHeroTitle }}</h3>
+            <p v-if="displayHeroSubtitle">{{ displayHeroSubtitle }}</p>
+          </header>
+          <div v-if="authorStaticDoc.highlights?.length" class="author-space-highlights">
+            <span v-for="tag in authorStaticDoc.highlights" :key="tag">{{ tag }}</span>
           </div>
-        </div>
-        <p class="bio">{{ authorProfile.bio }}</p>
-        <p class="meta">共发布 {{ guideCount }} 篇攻略（JS 动态加载）</p>
-        <div class="author-tags">
-          <span v-for="tag in mergedTags" :key="tag">{{ tag }}</span>
-        </div>
-      </section>
+          <div class="author-space-body">
+            <ContentRenderer :value="authorStaticDoc" />
+          </div>
+        </section>
 
-      <section class="author-guides">
-        <h2>该作者攻略</h2>
-        <div class="guides-grid">
-          <NuxtLink v-for="guide in authorGuides" :key="guide.path" :to="guide.path" class="guide-card card">
-            <div class="guide-meta">
-              <span>{{ guide.categoryL1 }} / {{ guide.categoryL2 }}</span>
-              <small>{{ guide.lang.toUpperCase() }} · {{ guide.updatedAt }}</small>
+        <section v-if="authorGuides.length" class="author-guides">
+          <h2>该作者攻略</h2>
+          <div class="guides-grid">
+            <NuxtLink v-for="guide in authorGuides" :key="guide.path" :to="guide.path" class="guide-card card">
+              <div class="guide-meta">
+                <span>{{ guide.categoryL1 }} / {{ guide.categoryL2 }}</span>
+                <small>{{ guide.lang.toUpperCase() }} · {{ guide.updatedAt }}</small>
+              </div>
+              <h3>{{ guide.title }}</h3>
+              <p>{{ guide.summary }}</p>
+              <div v-if="guide.stages.length" class="guide-stages">
+                覆盖层数：{{ guide.stages.join(' / ') }}
+              </div>
+            </NuxtLink>
+          </div>
+        </section>
+        <section v-else class="card guides-empty">
+          该作者暂时还没有公开攻略，后续会持续更新。
+        </section>
+      </div>
+
+      <aside class="author-side">
+        <section class="card author-profile">
+          <div class="author-profile-top">
+            <div class="author-avatar">
+              <img
+                v-if="displayAvatar && !isAvatarBroken"
+                :src="displayAvatar"
+                :alt="`${authorProfile.name} 头像`"
+                loading="lazy"
+                decoding="async"
+                @error="isAvatarBroken = true"
+              >
+              <span v-else>作者</span>
             </div>
-            <h3>{{ guide.title }}</h3>
-            <p>{{ guide.summary }}</p>
-            <div v-if="guide.stages.length" class="guide-stages">
-              覆盖层数：{{ guide.stages.join(' / ') }}
+            <div class="author-title-wrap">
+              <h2>{{ authorProfile.name }}</h2>
+              <p class="tagline">{{ displayTagline }}</p>
             </div>
-          </NuxtLink>
-        </div>
-      </section>
+          </div>
+          <p class="bio">{{ authorProfile.bio }}</p>
+          <p class="meta">共发布 {{ guideCount }} 篇攻略</p>
+          <a
+            v-if="bilibiliUrl"
+            class="bilibili-link"
+            :href="bilibiliUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="bilibili-icon" aria-hidden="true">
+              <svg viewBox="0 0 1024 1024" role="img">
+                <path
+                  d="M702.1 304.1h-380c-74.6 0-135 60.4-135 135v182.8c0 74.6 60.4 135 135 135h380c74.6 0 135-60.4 135-135V439.1c0-74.6-60.4-135-135-135zM547.7 575.3c0 9.7-7.9 17.6-17.6 17.6H494c-9.7 0-17.6-7.9-17.6-17.6v-89c0-9.7 7.9-17.6 17.6-17.6h36.1c9.7 0 17.6 7.9 17.6 17.6v89zm176.9 0c0 9.7-7.9 17.6-17.6 17.6h-36.1c-9.7 0-17.6-7.9-17.6-17.6v-89c0-9.7 7.9-17.6 17.6-17.6H707c9.7 0 17.6 7.9 17.6 17.6v89zM361.5 256.7c12.1-12.1 12.1-31.7 0-43.8l-74.8-74.8c-12.1-12.1-31.7-12.1-43.8 0-12.1 12.1-12.1 31.7 0 43.8l74.8 74.8c12.1 12.1 31.7 12.1 43.8 0zm419.6 0c12.1-12.1 12.1-31.7 0-43.8-12.1-12.1-31.7-12.1-43.8 0l-74.8 74.8c-12.1 12.1-12.1 31.7 0 43.8 12.1 12.1 31.7 12.1 43.8 0l74.8-74.8z"
+                />
+              </svg>
+            </span>
+            <span>Bilibili 主页</span>
+          </a>
+          <div class="author-tags">
+            <span v-for="tag in mergedTags" :key="tag">{{ tag }}</span>
+          </div>
+        </section>
+      </aside>
     </section>
   </div>
 
@@ -177,22 +273,46 @@ const mergedTags = computed(() => {
 .author-detail {
   padding: 24px 0 40px;
   display: grid;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 304px;
+  gap: 16px;
+  align-items: start;
+}
+
+.author-main {
+  display: grid;
+  gap: 16px;
+}
+
+.author-side {
+  position: sticky;
+  top: 80px;
 }
 
 .author-profile {
-  padding: 18px;
+  padding: 14px 14px 16px;
+  display: grid;
+  gap: 12px;
 }
 
 .author-profile-top {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.author-title-wrap h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.author-title-wrap .tagline {
+  margin-top: 4px;
 }
 
 .author-avatar {
-  width: 72px;
-  height: 72px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
   border: 1px solid var(--color-border);
   background: var(--color-surface-soft);
@@ -203,30 +323,67 @@ const mergedTags = computed(() => {
   font-size: 13px;
 }
 
-.author-profile h2 {
-  margin: 0;
-  font-size: 24px;
+.author-avatar span {
+  display: inline-flex;
+}
+
+.author-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .tagline {
-  margin: 4px 0 0;
+  margin: 0;
   color: var(--color-muted);
+  line-height: 1.5;
+  font-size: 13px;
 }
 
 .bio {
-  margin: 14px 0 0;
+  margin: 0;
   color: var(--color-foreground);
-  line-height: 1.7;
+  line-height: 1.75;
+  font-size: 14px;
 }
 
 .meta {
-  margin: 10px 0 0;
+  margin: 0;
   color: var(--color-muted);
   font-size: 13px;
 }
 
+.bilibili-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  text-decoration: none;
+  color: #00a1d6;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.bilibili-link:hover {
+  text-decoration: underline;
+}
+
+.bilibili-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  color: currentColor;
+}
+
+.bilibili-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
 .author-tags {
-  margin-top: 10px;
+  margin: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -243,6 +400,46 @@ const mergedTags = computed(() => {
 .author-guides h2 {
   margin: 0 0 12px;
   font-size: 22px;
+}
+
+.author-space {
+  padding: 16px;
+}
+
+.author-space-hero h3 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.author-space-hero p {
+  margin: 6px 0 0;
+  color: var(--color-muted);
+}
+
+.author-space-highlights {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.author-space-highlights span {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface-soft));
+  color: var(--color-primary);
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+.author-space-body {
+  margin-top: 12px;
+  color: var(--color-foreground);
+  line-height: 1.8;
+}
+
+.guides-empty {
+  padding: 14px;
+  color: var(--color-muted);
 }
 
 .guides-grid {
@@ -281,5 +478,15 @@ const mergedTags = computed(() => {
   margin-top: 8px;
   font-size: 12px;
   color: var(--color-muted);
+}
+
+@media (max-width: 1080px) {
+  .author-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .author-side {
+    position: static;
+  }
 }
 </style>

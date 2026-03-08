@@ -164,11 +164,17 @@ async function main() {
     const relativePath = path.relative(CONTENT_ROOT, filePath)
     const pathParts = relativePath.split(path.sep)
     const topLevelDir = pathParts[0]
+    const secondLevelDir = pathParts[1]
     const routePath = toRoutePath(relativePath)
     const basename = path.basename(filePath, '.md')
 
     // examples 目录仅用于演示，不参与线上检索索引。
     if (topLevelDir === 'examples') {
+      continue
+    }
+
+    // 作者静态主页内容不进入攻略检索索引。
+    if (SUPPORTED_LOCALES.includes(topLevelDir) && secondLevelDir === 'authors') {
       continue
     }
 

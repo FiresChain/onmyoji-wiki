@@ -2,11 +2,13 @@
 import {
   contentLocaleToDefaultSiteLocale,
   getContentLocaleFromPath,
-  isContentLocale,
+  isLocaleManagedPath,
   isSiteLocale,
+  normalizeRoutePath,
   SITE_LOCALE_COOKIE,
   SITE_LOCALE_OPTIONS,
   siteLocaleToContentLocale,
+  withContentLocalePrefix,
   type SiteLocale
 } from '~/utils/site-locale'
 
@@ -20,22 +22,17 @@ const localeCookie = useCookie<SiteLocale | null>(SITE_LOCALE_COOKIE, {
 })
 
 const navLinks = [
-  { href: '/home', label: '首页' },
-  { href: '/shikigami', label: '式神百科' },
-  { href: '/onmyoji', label: '阴阳师' },
-  { href: '/guides', label: '攻略中心' },
-  { href: '/authors', label: '创作者' },
-  { href: '/editor', label: '编辑器' }
+  { path: '/', label: '首页' },
+  { path: '/shikigami', label: '式神百科' },
+  { path: '/onmyoji', label: '阴阳师' },
+  { path: '/guides', label: '攻略中心' },
+  { path: '/authors', label: '创作者' },
+  { path: '/editor', label: '编辑器' }
 ]
 
 const currentContentLocale = computed<'zh' | 'en'>(() => {
   const localeInPath = getContentLocaleFromPath(route.path)
   if (localeInPath) return localeInPath
-
-  const queryLang = typeof route.query.lang === 'string' ? route.query.lang : ''
-  if (isContentLocale(queryLang)) {
-    return queryLang
-  }
 
   if (isSiteLocale(localeCookie.value)) {
     return siteLocaleToContentLocale(localeCookie.value)
@@ -51,7 +48,8 @@ const currentLocale = computed<SiteLocale>(() => {
   return contentLocaleToDefaultSiteLocale(currentContentLocale.value)
 })
 
-const homePath = computed(() => `/${siteLocaleToContentLocale(currentLocale.value)}`)
+const activeContentLocale = computed<'zh' | 'en'>(() => siteLocaleToContentLocale(currentLocale.value))
+const homePath = computed(() => withContentLocalePrefix('/', activeContentLocale.value))
 
 watch(
   () => currentContentLocale.value,
@@ -68,18 +66,11 @@ watch(
   { immediate: true }
 )
 
-const normalizeNavHref = (href: string): string => {
-  if (href === '/home') {
-    return homePath.value
-  }
-  return href
-}
-
-const normalizedPath = computed(() => route.path.replace(/\/+$/, '') || '/')
+const normalizedPath = computed(() => normalizeRoutePath(route.path))
 const isRootRoute = computed(() => normalizedPath.value === '/zh' || normalizedPath.value === '/en' || normalizedPath.value === '/')
 
 const isActive = (href: string): boolean => {
-  const normalizedHref = normalizeNavHref(href).replace(/\/+$/, '') || '/'
+  const normalizedHref = normalizeRoutePath(href)
   if (normalizedHref === '/zh' || normalizedHref === '/en') {
     return isRootRoute.value
   }
@@ -89,48 +80,28 @@ const isActive = (href: string): boolean => {
 const switchLocale = async (nextLocale: SiteLocale): Promise<void> => {
   localeCookie.value = nextLocale
   const nextContentLocale = siteLocaleToContentLocale(nextLocale)
-
   const localeInPath = getContentLocaleFromPath(route.path)
-  if (localeInPath) {
-    if (localeInPath === nextContentLocale) {
+  const canSwitchByPath = Boolean(localeInPath) || isLocaleManagedPath(route.path)
+  if (!canSwitchByPath) {
+    return
+  }
+
+  const nextPath = withContentLocalePrefix(route.path, nextContentLocale)
+  const nextQuery = { ...route.query }
+  delete (nextQuery as Record<string, unknown>).lang
+
+  if (normalizeRoutePath(nextPath) === normalizedPath.value) {
+    const currentLang = typeof route.query.lang === 'string' ? route.query.lang : ''
+    if (!currentLang) {
       return
     }
-
-    const segments = route.path.split('/').filter(Boolean)
-    segments[0] = nextContentLocale
-    await router.push({
-      path: `/${segments.join('/')}`,
-      query: route.query,
-      hash: route.hash
-    })
-    return
   }
 
-  if (route.path === '/') {
-    await router.push(`/${nextContentLocale}`)
-    return
-  }
-
-  if (route.path === '/guides') {
-    const currentQueryLang = typeof route.query.lang === 'string' ? route.query.lang : ''
-    if (currentQueryLang === nextContentLocale) {
-      return
-    }
-
-    await router.push({
-      path: route.path,
-      query: {
-        ...route.query,
-        lang: nextContentLocale
-      },
-      hash: route.hash
-    })
-    return
-  }
-
-  if (route.path === '/home') {
-    await router.push(`/${nextContentLocale}`)
-  }
+  await router.push({
+    path: nextPath,
+    query: nextQuery,
+    hash: route.hash
+  })
 }
 
 const onLocaleSelect = async (event: Event): Promise<void> => {
@@ -147,7 +118,7 @@ const normalizedNavLinks = computed(() => {
   return navLinks.map((link) => {
     return {
       ...link,
-      href: normalizeNavHref(link.href)
+      href: withContentLocalePrefix(link.path, activeContentLocale.value)
     }
   })
 })

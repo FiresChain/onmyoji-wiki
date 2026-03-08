@@ -4,7 +4,10 @@ export default defineContentConfig({
   collections: {
     content: defineCollection({
       type: 'page',
-      source: '**/*.md',
+      source: {
+        include: '**/*.md',
+        exclude: ['**/authors/**/*.md']
+      },
       schema: z.object({
         title: z.string(),
         lang: z.enum(['zh', 'en']),
@@ -24,6 +27,20 @@ export default defineContentConfig({
         noindex: z.boolean().optional(),
         stages: z.array(z.union([z.string(), z.number()])).optional(),
         stageAnchors: z.record(z.string(), z.string()).optional()
+      })
+    }),
+    authors: defineCollection({
+      type: 'page',
+      source: '**/authors/**/*.md',
+      schema: z.object({
+        lang: z.enum(['zh', 'en']),
+        authorId: z.string(),
+        title: z.string(),
+        tagline: z.string().optional(),
+        heroTitle: z.string().optional(),
+        heroSubtitle: z.string().optional(),
+        highlights: z.array(z.string()).optional(),
+        bilibiliUrl: z.string().optional()
       })
     })
   }

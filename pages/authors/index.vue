@@ -2,6 +2,11 @@
 import { getAuthorProfile } from '~/utils/author-profiles'
 import { loadSearchIndex } from '~/utils/search-index'
 
+definePageMeta({
+  path: '/:locale(zh|en)/authors',
+  alias: ['/authors']
+})
+
 type SearchIndexItem = {
   path: string
   lang: 'zh' | 'en'
@@ -16,6 +21,7 @@ type AuthorCard = {
   title: string
   summary: string
   tagline: string
+  avatar?: string
   tags: string[]
   guideCount: number
   updatedAt: string
@@ -28,6 +34,26 @@ const { data: indexItems } = await useAsyncData('authors-search-index', async ()
   ])
   return [...zh, ...en]
 })
+
+const runtimeConfig = useRuntimeConfig()
+const resolvePublicAssetUrl = (path?: string) => {
+  if (!path) {
+    return ''
+  }
+  if (/^https?:\/\//.test(path)) {
+    return path
+  }
+
+  const normalizedPath = path.startsWith('/') ? path.slice(1) : path
+  const base = runtimeConfig.app.baseURL || '/'
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`
+  return `${normalizedBase}${normalizedPath}`
+}
+
+const brokenAuthorAvatars = ref<Set<string>>(new Set())
+const markAuthorAvatarBroken = (authorId: string) => {
+  brokenAuthorAvatars.value.add(authorId)
+}
 
 const authorList = computed<AuthorCard[]>(() => {
   const map = new Map<
@@ -78,6 +104,7 @@ const authorList = computed<AuthorCard[]>(() => {
         title: profile.name,
         summary: profile.bio,
         tagline: profile.tagline,
+        avatar: resolvePublicAssetUrl(profile.avatar),
         tags: Array.from(new Set([...profile.specialties, ...author.tags])).slice(0, 8),
         guideCount: author.guidePathSet.size,
         updatedAt: author.updatedAt
@@ -112,7 +139,15 @@ const authorList = computed<AuthorCard[]>(() => {
           class="author-card card"
         >
           <div class="author-avatar">
-            <div>作者</div>
+            <img
+              v-if="author.avatar && !brokenAuthorAvatars.has(author.id)"
+              :src="author.avatar"
+              :alt="`${author.title} 头像`"
+              loading="lazy"
+              decoding="async"
+              @error="markAuthorAvatarBroken(author.id)"
+            >
+            <div v-else>作者</div>
           </div>
           <h2>{{ author.title }}</h2>
           <p class="author-tagline">{{ author.tagline }}</p>
@@ -164,6 +199,13 @@ const authorList = computed<AuthorCard[]>(() => {
   justify-content: center;
   color: var(--color-muted);
   font-size: 13px;
+}
+
+.author-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .author-card h2 {

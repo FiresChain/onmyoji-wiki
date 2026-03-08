@@ -1,4 +1,9 @@
 <script setup lang="ts">
+definePageMeta({
+  path: '/:locale(zh|en)/onmyoji',
+  alias: ['/onmyoji']
+})
+
 type OnmyojiDoc = {
   path: string
   title?: string

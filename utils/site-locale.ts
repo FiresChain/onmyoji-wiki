@@ -24,6 +24,48 @@ export const getContentLocaleFromPath = (path: string): ContentLocale | null => 
   return isContentLocale(firstSegment) ? firstSegment : null
 }
 
+export const normalizeRoutePath = (path: string): string => {
+  if (!path) {
+    return '/'
+  }
+  const normalized = path.startsWith('/') ? path : `/${path}`
+  return normalized.replace(/\/+$/, '') || '/'
+}
+
+const LOCALE_MANAGED_EXACT_PATHS = new Set([
+  '/',
+  '/home',
+  '/guides',
+  '/authors',
+  '/shikigami',
+  '/onmyoji',
+  '/editor'
+])
+
+const LOCALE_MANAGED_PREFIX_PATHS = ['/guides/', '/authors/']
+
+export const isLocaleManagedPath = (path: string): boolean => {
+  const normalized = normalizeRoutePath(path)
+  if (LOCALE_MANAGED_EXACT_PATHS.has(normalized)) {
+    return true
+  }
+  return LOCALE_MANAGED_PREFIX_PATHS.some((prefix) => normalized.startsWith(prefix))
+}
+
+export const withContentLocalePrefix = (path: string, locale: ContentLocale): string => {
+  const normalized = normalizeRoutePath(path)
+  if (normalized === '/' || normalized === '/home') {
+    return `/${locale}`
+  }
+
+  const segments = normalized.split('/').filter(Boolean)
+  if (segments.length > 0 && isContentLocale(segments[0])) {
+    segments[0] = locale
+    return `/${segments.join('/')}`
+  }
+  return `/${locale}${normalized}`
+}
+
 export const siteLocaleToContentLocale = (locale: SiteLocale): ContentLocale => {
   return locale === 'zh-CN' || locale === 'zh-TW' ? 'zh' : 'en'
 }

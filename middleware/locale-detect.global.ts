@@ -3,10 +3,13 @@ import {
   detectLocaleFromAcceptLanguage,
   detectLocaleFromNavigator,
   getContentLocaleFromPath,
+  isLocaleManagedPath,
   isContentLocale,
   isSiteLocale,
+  normalizeRoutePath,
   SITE_LOCALE_COOKIE,
   siteLocaleToContentLocale,
+  withContentLocalePrefix,
   type SiteLocale
 } from '~/utils/site-locale'
 
@@ -17,44 +20,54 @@ export default defineNuxtRouteMiddleware((to) => {
   })
 
   const contentLocaleFromPath = getContentLocaleFromPath(to.path)
+  const normalizedPath = normalizeRoutePath(to.path)
+  const queryLang = typeof to.query.lang === 'string' ? to.query.lang : ''
+  const nextQuery = { ...to.query } as Record<string, unknown>
+  delete nextQuery.lang
+
   if (contentLocaleFromPath) {
     if (!isSiteLocale(localeCookie.value)) {
       localeCookie.value = contentLocaleToDefaultSiteLocale(contentLocaleFromPath)
-      return
-    }
-
-    if (siteLocaleToContentLocale(localeCookie.value) !== contentLocaleFromPath) {
+    } else if (siteLocaleToContentLocale(localeCookie.value) !== contentLocaleFromPath) {
       localeCookie.value = contentLocaleToDefaultSiteLocale(contentLocaleFromPath)
     }
+
+    if (queryLang) {
+      return navigateTo({
+        path: normalizedPath,
+        query: nextQuery,
+        hash: to.hash
+      }, { replace: true, redirectCode: 302 })
+    }
     return
   }
 
-  const queryLang = typeof to.query.lang === 'string' ? to.query.lang : ''
+  let preferredContentLocale: 'zh' | 'en' = 'zh'
   if (isContentLocale(queryLang)) {
-    if (!isSiteLocale(localeCookie.value) || siteLocaleToContentLocale(localeCookie.value) !== queryLang) {
-      localeCookie.value = contentLocaleToDefaultSiteLocale(queryLang)
-    }
-    return
-  }
-
-  if (isSiteLocale(localeCookie.value)) {
-    if (to.path === '/') {
-      return navigateTo(`/${siteLocaleToContentLocale(localeCookie.value)}`, { replace: true, redirectCode: 302 })
-    }
-    return
-  }
-
-  let detected: SiteLocale = 'zh-CN'
-  if (import.meta.server) {
-    const headers = useRequestHeaders(['accept-language'])
-    detected = detectLocaleFromAcceptLanguage(headers['accept-language'])
+    preferredContentLocale = queryLang
+  } else if (isSiteLocale(localeCookie.value)) {
+    preferredContentLocale = siteLocaleToContentLocale(localeCookie.value)
   } else {
-    detected = detectLocaleFromNavigator()
+    let detected: SiteLocale = 'zh-CN'
+    if (import.meta.server) {
+      const headers = useRequestHeaders(['accept-language'])
+      detected = detectLocaleFromAcceptLanguage(headers['accept-language'])
+    } else {
+      detected = detectLocaleFromNavigator()
+    }
+    localeCookie.value = detected
+    preferredContentLocale = siteLocaleToContentLocale(detected)
   }
 
-  localeCookie.value = detected
+  if (!isSiteLocale(localeCookie.value) || siteLocaleToContentLocale(localeCookie.value) !== preferredContentLocale) {
+    localeCookie.value = contentLocaleToDefaultSiteLocale(preferredContentLocale)
+  }
 
-  if (to.path === '/') {
-    return navigateTo(`/${siteLocaleToContentLocale(detected)}`, { replace: true, redirectCode: 302 })
+  if (normalizedPath === '/' || isLocaleManagedPath(normalizedPath)) {
+    return navigateTo({
+      path: withContentLocalePrefix(normalizedPath, preferredContentLocale),
+      query: nextQuery,
+      hash: to.hash
+    }, { replace: true, redirectCode: 302 })
   }
 })

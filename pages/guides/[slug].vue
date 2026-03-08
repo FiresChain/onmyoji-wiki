@@ -1,4 +1,9 @@
 <script setup lang="ts">
+definePageMeta({
+  path: '/:locale(zh|en)/guides/:slug',
+  alias: ['/guides/:slug']
+})
+
 type GuideDoc = {
   path: string
   title?: string

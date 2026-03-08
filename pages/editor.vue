@@ -17,6 +17,11 @@ import {
   parseOnmyojiEditorFenceInfo
 } from '~/utils/onmyoji-editor-syntax'
 
+definePageMeta({
+  path: '/:locale(zh|en)/editor',
+  alias: ['/editor']
+})
+
 type FlowBlock = {
   key: string
   blockIndex: number
