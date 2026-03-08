@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import {
-  contentLocaleToDefaultSiteLocale,
-  getContentLocaleFromPath,
+  getSiteLocaleFromPath,
   isLocaleManagedPath,
   isSiteLocale,
   normalizeRoutePath,
   SITE_LOCALE_COOKIE,
   SITE_LOCALE_OPTIONS,
-  siteLocaleToContentLocale,
-  withContentLocalePrefix,
+  siteLocaleToPathPrefix,
+  withSiteLocalePrefix,
   type SiteLocale
 } from '~/utils/site-locale'
 
@@ -30,44 +29,37 @@ const navLinks = [
   { path: '/editor', label: '编辑器' }
 ]
 
-const currentContentLocale = computed<'zh' | 'en'>(() => {
-  const localeInPath = getContentLocaleFromPath(route.path)
-  if (localeInPath) return localeInPath
-
-  if (isSiteLocale(localeCookie.value)) {
-    return siteLocaleToContentLocale(localeCookie.value)
-  }
-
-  return 'zh'
-})
-
 const currentLocale = computed<SiteLocale>(() => {
+  const localeInPath = getSiteLocaleFromPath(route.path)
+  if (localeInPath) {
+    return localeInPath
+  }
   if (isSiteLocale(localeCookie.value)) {
     return localeCookie.value
   }
-  return contentLocaleToDefaultSiteLocale(currentContentLocale.value)
+  return 'zh-CN'
 })
 
-const activeContentLocale = computed<'zh' | 'en'>(() => siteLocaleToContentLocale(currentLocale.value))
-const homePath = computed(() => withContentLocalePrefix('/', activeContentLocale.value))
+const homePath = computed(() => withSiteLocalePrefix('/', currentLocale.value))
 
 watch(
-  () => currentContentLocale.value,
-  (contentLocale) => {
-    if (!isSiteLocale(localeCookie.value)) {
-      localeCookie.value = contentLocaleToDefaultSiteLocale(contentLocale)
-      return
-    }
-
-    if (siteLocaleToContentLocale(localeCookie.value) !== contentLocale) {
-      localeCookie.value = contentLocaleToDefaultSiteLocale(contentLocale)
+  () => currentLocale.value,
+  (siteLocale) => {
+    if (!isSiteLocale(localeCookie.value) || localeCookie.value !== siteLocale) {
+      localeCookie.value = siteLocale
     }
   },
   { immediate: true }
 )
 
 const normalizedPath = computed(() => normalizeRoutePath(route.path))
-const isRootRoute = computed(() => normalizedPath.value === '/zh' || normalizedPath.value === '/en' || normalizedPath.value === '/')
+const isRootRoute = computed(() => {
+  const roots = new Set(['/'])
+  SITE_LOCALE_OPTIONS.forEach((item) => roots.add(`/${siteLocaleToPathPrefix(item.value)}`))
+  roots.add('/zh')
+  roots.add('/en')
+  return roots.has(normalizedPath.value)
+})
 
 const isActive = (href: string): boolean => {
   const normalizedHref = normalizeRoutePath(href)
@@ -79,14 +71,13 @@ const isActive = (href: string): boolean => {
 
 const switchLocale = async (nextLocale: SiteLocale): Promise<void> => {
   localeCookie.value = nextLocale
-  const nextContentLocale = siteLocaleToContentLocale(nextLocale)
-  const localeInPath = getContentLocaleFromPath(route.path)
+  const localeInPath = getSiteLocaleFromPath(route.path)
   const canSwitchByPath = Boolean(localeInPath) || isLocaleManagedPath(route.path)
   if (!canSwitchByPath) {
     return
   }
 
-  const nextPath = withContentLocalePrefix(route.path, nextContentLocale)
+  const nextPath = withSiteLocalePrefix(route.path, nextLocale)
   const nextQuery = { ...route.query }
   delete (nextQuery as Record<string, unknown>).lang
 
@@ -118,7 +109,7 @@ const normalizedNavLinks = computed(() => {
   return navLinks.map((link) => {
     return {
       ...link,
-      href: withContentLocalePrefix(link.path, activeContentLocale.value)
+      href: withSiteLocalePrefix(link.path, currentLocale.value)
     }
   })
 })

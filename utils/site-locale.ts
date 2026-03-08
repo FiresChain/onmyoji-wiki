@@ -24,6 +24,45 @@ export const getContentLocaleFromPath = (path: string): ContentLocale | null => 
   return isContentLocale(firstSegment) ? firstSegment : null
 }
 
+const SITE_LOCALE_PATH_PREFIX_MAP: Record<SiteLocale, string> = {
+  'zh-CN': 'zh',
+  'zh-TW': 'zh-tw',
+  ja: 'ja',
+  vi: 'vi',
+  ko: 'ko'
+}
+
+const CONTENT_LOCALE_ALIAS_MAP: Record<ContentLocale, SiteLocale> = {
+  zh: 'zh-CN',
+  en: 'ja'
+}
+
+export const siteLocaleToPathPrefix = (locale: SiteLocale): string => {
+  return SITE_LOCALE_PATH_PREFIX_MAP[locale]
+}
+
+export const pathPrefixToSiteLocale = (prefix: string): SiteLocale | null => {
+  const normalized = String(prefix || '').trim().toLowerCase()
+  if (!normalized) {
+    return null
+  }
+
+  const entry = Object.entries(SITE_LOCALE_PATH_PREFIX_MAP).find(([, value]) => value === normalized)
+  if (entry) {
+    return entry[0] as SiteLocale
+  }
+
+  if (normalized === 'zh' || normalized === 'en') {
+    return CONTENT_LOCALE_ALIAS_MAP[normalized]
+  }
+  return null
+}
+
+export const getSiteLocaleFromPath = (path: string): SiteLocale | null => {
+  const firstSegment = path.split('/').filter(Boolean)[0]
+  return pathPrefixToSiteLocale(firstSegment)
+}
+
 export const normalizeRoutePath = (path: string): string => {
   if (!path) {
     return '/'
@@ -64,6 +103,22 @@ export const withContentLocalePrefix = (path: string, locale: ContentLocale): st
     return `/${segments.join('/')}`
   }
   return `/${locale}${normalized}`
+}
+
+export const withSiteLocalePrefix = (path: string, locale: SiteLocale): string => {
+  const normalized = normalizeRoutePath(path)
+  const nextPrefix = siteLocaleToPathPrefix(locale)
+  if (normalized === '/' || normalized === '/home') {
+    return `/${nextPrefix}`
+  }
+
+  const segments = normalized.split('/').filter(Boolean)
+  const firstSegment = segments[0] || ''
+  if (pathPrefixToSiteLocale(firstSegment) || isContentLocale(firstSegment)) {
+    segments[0] = nextPrefix
+    return `/${segments.join('/')}`
+  }
+  return `/${nextPrefix}${normalized}`
 }
 
 export const siteLocaleToContentLocale = (locale: SiteLocale): ContentLocale => {
