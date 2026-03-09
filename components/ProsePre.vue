@@ -48,7 +48,10 @@ const resolvedHeight = computed<number | 'auto'>(() => {
     return 'auto'
   }
 
-  if (fenceInfo.value.height && fenceInfo.value.height > 0) {
+  if (typeof fenceInfo.value.height === 'string' && fenceInfo.value.height === 'auto') {
+    return 'auto'
+  }
+  if (typeof fenceInfo.value.height === 'number' && fenceInfo.value.height > 0) {
     return fenceInfo.value.height
   }
 
@@ -59,7 +62,7 @@ const resolvedHeight = computed<number | 'auto'>(() => {
   if (typeof payloadHeight === 'number' && Number.isFinite(payloadHeight) && payloadHeight > 0) {
     return payloadHeight
   }
-  return 400
+  return 'auto'
 })
 
 const canRenderFileFlow = computed(() => (

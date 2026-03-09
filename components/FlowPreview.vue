@@ -23,7 +23,7 @@ const props = withDefaults(defineProps<{
   type: 'file',
   data: () => ({ nodes: [], edges: [] }),
   src: '',
-  height: 400,
+  height: 'auto',
   autoScale: true,
   debugLayout: false,
   showMiniMap: false,
@@ -47,6 +47,7 @@ const canvasViewportRef = ref<HTMLElement | null>(null)
 const viewportWidth = ref(0)
 const runtimeConfig = useRuntimeConfig()
 let viewportResizeObserver: ResizeObserver | null = null
+let previewFitVerifyTimer: ReturnType<typeof setTimeout> | null = null
 const route = useRoute()
 
 const baseURL = computed(() => runtimeConfig.app.baseURL || '/')
@@ -154,7 +155,7 @@ const normalizeHeightMode = (input: unknown): 'auto' | number => {
       return parsed
     }
   }
-  return 400
+  return 'auto'
 }
 
 const resolvedHeightMode = computed(() => normalizeHeightMode(props.height))
@@ -225,7 +226,7 @@ const debugLayoutEnabled = computed(() => {
   const raw = route.query.flowDebug ?? route.query.flow_debug
   const first = Array.isArray(raw) ? raw[0] : raw
   const value = String(first || '').trim().toLowerCase()
-  return value === '1' || value === 'true' || value === 'yes'
+  return value === '1' || value === 'true' || value === 'yes' || value === 'on'
 })
 
 const updateViewportWidth = () => {
@@ -250,21 +251,98 @@ const setupViewportResizeObserver = () => {
   updateViewportWidth()
 }
 
+const clearPreviewFitVerifyTimer = () => {
+  if (previewFitVerifyTimer) {
+    clearTimeout(previewFitVerifyTimer)
+    previewFitVerifyTimer = null
+  }
+}
+
 const previewRef = ref<any>()
 
 const applyPreviewFitView = (attempt = 0) => {
   if (!import.meta.client || !props.autoScale || loading.value || !!errorMessage.value) {
+    clearPreviewFitVerifyTimer()
     return
   }
   const preview = previewRef.value as any
-  if (!preview || typeof preview.fitView !== 'function') {
+  const fitViewAvailable = !!(preview && typeof preview.fitView === 'function')
+  const translateCenterAvailable = !!(preview && typeof preview.translateCenter === 'function')
+  const getTransformAvailable = !!(preview && typeof preview.getTransform === 'function')
+  if (!preview || (!fitViewAvailable && !translateCenterAvailable)) {
     if (attempt < FITVIEW_RETRY_LIMIT) {
       setTimeout(() => applyPreviewFitView(attempt + 1), FITVIEW_RETRY_DELAY_MS)
     }
     return
   }
   requestAnimationFrame(() => {
-    const applied = preview.fitView(FITVIEW_VERTICAL_OFFSET, FITVIEW_HORIZONTAL_OFFSET)
+    const graphData = typeof preview.getGraphData === 'function' ? preview.getGraphData() : null
+    const graphNodeCount = Array.isArray(graphData?.nodes) ? graphData.nodes.length : -1
+    if (graphNodeCount === 0) {
+      if (attempt < FITVIEW_RETRY_LIMIT) {
+        setTimeout(() => applyPreviewFitView(attempt + 1), FITVIEW_RETRY_DELAY_MS)
+      }
+      return
+    }
+
+    if (typeof preview.resizeCanvas === 'function') {
+      preview.resizeCanvas()
+    }
+    if (typeof preview.resetZoom === 'function') {
+      preview.resetZoom()
+    }
+    if (typeof preview.resetTranslate === 'function') {
+      preview.resetTranslate()
+    }
+
+    let applied = false
+    if (fitViewAvailable) {
+      applied = preview.fitView(FITVIEW_VERTICAL_OFFSET, FITVIEW_HORIZONTAL_OFFSET)
+    }
+    if (!applied && translateCenterAvailable) {
+      applied = preview.translateCenter()
+    }
+
+    const targetScale = Math.min(1, Math.max(0.01, Number(estimatedWidthScale.value || 1)))
+    let transformSnapshot = getTransformAvailable ? preview.getTransform() : null
+    let transformScale = Number(transformSnapshot?.SCALE_X ?? NaN)
+    if (
+      applied
+      && fitViewAvailable
+      && targetScale < 0.999
+      && Number.isFinite(transformScale)
+      && transformScale > targetScale + 0.03
+    ) {
+      preview.fitView()
+      transformSnapshot = getTransformAvailable ? preview.getTransform() : transformSnapshot
+      transformScale = Number(transformSnapshot?.SCALE_X ?? NaN)
+    }
+
+    clearPreviewFitVerifyTimer()
+    if (applied && getTransformAvailable && targetScale < 0.999) {
+      previewFitVerifyTimer = setTimeout(() => {
+        const currentPreview = previewRef.value as any
+        if (!currentPreview || typeof currentPreview.getTransform !== 'function') {
+          clearPreviewFitVerifyTimer()
+          return
+        }
+        const currentTransform = currentPreview.getTransform()
+        const currentScale = Number(currentTransform?.SCALE_X ?? NaN)
+        if (debugLayoutEnabled.value) {
+          console.info('[FlowPreview][layout-fit-verify]', {
+            targetScale,
+            appliedScale: Number.isFinite(transformScale) ? transformScale : null,
+            currentScale: Number.isFinite(currentScale) ? currentScale : null,
+            currentTransform
+          })
+        }
+        if (Number.isFinite(currentScale) && currentScale > targetScale + 0.03) {
+          applyPreviewFitView(0)
+        }
+        clearPreviewFitVerifyTimer()
+      }, 180)
+    }
+
     if (!applied && attempt < FITVIEW_RETRY_LIMIT) {
       setTimeout(() => applyPreviewFitView(attempt + 1), FITVIEW_RETRY_DELAY_MS)
     }
@@ -329,7 +407,22 @@ watch(
       resolvedCanvasWidth: resolvedCanvasWidth.value,
       resolvedCanvasHeight: resolvedCanvasHeight.value,
       estimatedWidthScale: Number(estimatedWidthScale.value.toFixed(4)),
+      resizeCanvasAvailable: !!(previewRef.value && typeof (previewRef.value as any).resizeCanvas === 'function'),
       fitViewAvailable: !!(previewRef.value && typeof (previewRef.value as any).fitView === 'function'),
+      resetZoomAvailable: !!(previewRef.value && typeof (previewRef.value as any).resetZoom === 'function'),
+      resetTranslateAvailable: !!(previewRef.value && typeof (previewRef.value as any).resetTranslate === 'function'),
+      translateCenterAvailable: !!(previewRef.value && typeof (previewRef.value as any).translateCenter === 'function'),
+      transformSnapshot: !!(previewRef.value && typeof (previewRef.value as any).getTransform === 'function')
+        ? (previewRef.value as any).getTransform()
+        : null,
+      graphNodeCount: (() => {
+        const preview = previewRef.value as any
+        if (!preview || typeof preview.getGraphData !== 'function') {
+          return -1
+        }
+        const graphData = preview.getGraphData()
+        return Array.isArray(graphData?.nodes) ? graphData.nodes.length : -1
+      })(),
       previewViewportHeight: previewViewportHeight.value
     })
   },
@@ -339,6 +432,7 @@ watch(
 onBeforeUnmount(() => {
   viewportResizeObserver?.disconnect()
   viewportResizeObserver = null
+  clearPreviewFitVerifyTimer()
 })
 
 // 导出数据

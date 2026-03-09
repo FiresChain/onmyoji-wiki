@@ -4,7 +4,7 @@ export type OnmyojiEditorFenceInfo = {
   isOnmyojiEditor: boolean
   type: OnmyojiEditorBlockType
   src: string
-  height: number | null
+  height: number | 'auto' | null
   attrs: Record<string, string>
 }
 
@@ -69,9 +69,12 @@ export const parseOnmyojiEditorFenceInfo = (info: string): OnmyojiEditorFenceInf
   const type: OnmyojiEditorBlockType = typeRaw === 'file' ? 'file' : 'block'
   const src = attrs.src || ''
   const heightRaw = attrs[':height'] ?? attrs.height ?? ''
-  const height = Number.isFinite(Number(heightRaw)) && Number(heightRaw) > 0
-    ? Number(heightRaw)
-    : null
+  const normalizedHeightRaw = String(heightRaw).trim().toLowerCase()
+  const height = normalizedHeightRaw === 'auto'
+    ? 'auto'
+    : (Number.isFinite(Number(normalizedHeightRaw)) && Number(normalizedHeightRaw) > 0
+        ? Number(normalizedHeightRaw)
+        : null)
 
   return {
     isOnmyojiEditor: true,

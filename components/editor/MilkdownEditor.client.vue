@@ -157,7 +157,7 @@ const resolvePreviewHeight = (input: any, fallback = DEFAULT_FLOW_PREVIEW_HEIGHT
   return fallback
 }
 
-const resolveRenderHeight = (input: any, fallback = DEFAULT_FLOW_PREVIEW_HEIGHT): number | 'auto' => {
+const resolveRenderHeight = (input: any, fallback: number | 'auto' = 'auto'): number | 'auto' => {
   if (!input || typeof input !== 'object') {
     return fallback
   }
@@ -213,7 +213,7 @@ const isFlowDebugEnabled = (): boolean => {
 
 const parseFlowGraphData = (raw: string): { graphData: GraphData; previewHeight: number; renderHeight: number | 'auto'; error: string } => {
   if (!raw.trim()) {
-    return { graphData: EMPTY_GRAPH_DATA, previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT, renderHeight: DEFAULT_FLOW_PREVIEW_HEIGHT, error: '' }
+    return { graphData: EMPTY_GRAPH_DATA, previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT, renderHeight: 'auto', error: '' }
   }
 
   try {
@@ -228,7 +228,7 @@ const parseFlowGraphData = (raw: string): { graphData: GraphData; previewHeight:
     return {
       graphData: EMPTY_GRAPH_DATA,
       previewHeight: DEFAULT_FLOW_PREVIEW_HEIGHT,
-      renderHeight: DEFAULT_FLOW_PREVIEW_HEIGHT,
+      renderHeight: 'auto',
       error: '流程块 JSON 解析失败，点击“编辑流程块”后可重新保存覆盖。'
     }
   }
@@ -288,7 +288,10 @@ class FlowBlockNodeView {
   private previewResizeObserver: ResizeObserver | null = null
   private lastPreviewHostWidth = 0
   private previewComponentRef: any = null
+  private previewComponentVNode: any = null
+  private previewComponentApiRef: any = null
   private fitViewRetryTimer: ReturnType<typeof setTimeout> | null = null
+  private fitViewVerifyTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(node: any, view: any, getPos: boolean | (() => number | undefined)) {
     this.node = node
@@ -380,9 +383,15 @@ class FlowBlockNodeView {
     this.previewResizeObserver?.disconnect()
     this.previewResizeObserver = null
     this.previewComponentRef = null
+    this.previewComponentVNode = null
+    this.previewComponentApiRef = null
     if (this.fitViewRetryTimer) {
       clearTimeout(this.fitViewRetryTimer)
       this.fitViewRetryTimer = null
+    }
+    if (this.fitViewVerifyTimer) {
+      clearTimeout(this.fitViewVerifyTimer)
+      this.fitViewVerifyTimer = null
     }
     this.editButton.removeEventListener('click', this.handleEdit)
     this.cutButton.removeEventListener('click', this.handleCut)
@@ -414,6 +423,62 @@ class FlowBlockNodeView {
       return -1
     }
     return resolveFlowBlockIndex(this.view?.state?.doc, pos)
+  }
+
+  private hasPreviewApi(target: any): boolean {
+    if (!target || typeof target !== 'object') {
+      return false
+    }
+    return (
+      typeof target.resizeCanvas === 'function'
+      || typeof target.fitView === 'function'
+      || typeof target.resetZoom === 'function'
+      || typeof target.resetTranslate === 'function'
+      || typeof target.translateCenter === 'function'
+      || typeof target.getTransform === 'function'
+      || typeof target.getGraphData === 'function'
+    )
+  }
+
+  private resolvePreviewApi(): { api: any; source: string } {
+    const instance = this.previewComponentRef
+    const vnode = this.previewComponentVNode
+    const candidates: Array<{ value: any; source: string }> = [
+      { value: instance, source: 'instance' },
+      { value: instance?.$?.exposed, source: 'instance.$.exposed' },
+      { value: instance?.exposed, source: 'instance.exposed' },
+      { value: instance?.proxy, source: 'instance.proxy' },
+      { value: instance?.$?.proxy, source: 'instance.$.proxy' },
+      { value: vnode?.component?.exposed, source: 'vnode.component.exposed' },
+      { value: vnode?.component?.proxy, source: 'vnode.component.proxy' }
+    ]
+    for (const candidate of candidates) {
+      if (this.hasPreviewApi(candidate.value)) {
+        return { api: candidate.value, source: candidate.source }
+      }
+    }
+    if (!instance && !vnode) {
+      return { api: null, source: 'none' }
+    }
+    return { api: null, source: 'not-found' }
+  }
+
+  private resolvePreviewRefDebugShape() {
+    const instance = this.previewComponentRef
+    const vnode = this.previewComponentVNode
+    return {
+      hasRef: !!instance,
+      refType: typeof instance,
+      hasDollar: !!instance?.$,
+      hasExposed: !!instance?.exposed,
+      hasDollarExposed: !!instance?.$?.exposed,
+      hasProxy: !!instance?.proxy,
+      hasDollarProxy: !!instance?.$?.proxy,
+      refKeys: instance && typeof instance === 'object' ? Object.keys(instance).slice(0, 20) : [],
+      hasVNode: !!vnode,
+      hasVNodeComponent: !!vnode?.component,
+      hasVNodeExposed: !!vnode?.component?.exposed
+    }
   }
 
   private readonly handleEdit = () => {
@@ -468,6 +533,10 @@ class FlowBlockNodeView {
       clearTimeout(this.fitViewRetryTimer)
       this.fitViewRetryTimer = null
     }
+    if (this.fitViewVerifyTimer) {
+      clearTimeout(this.fitViewVerifyTimer)
+      this.fitViewVerifyTimer = null
+    }
 
     const rawText = node?.textContent ?? ''
     const parsed = parseFlowGraphData(rawText)
@@ -485,6 +554,8 @@ class FlowBlockNodeView {
     this.previewHost.style.height = `${scaledHeight}px`
     if (!flowPreviewComponent.value) {
       this.previewComponentRef = null
+      this.previewComponentVNode = null
+      this.previewComponentApiRef = null
       this.previewHost.textContent = '流程图组件加载中...'
       if (parsed.error) {
         this.statusNode.textContent = parsed.error
@@ -496,6 +567,19 @@ class FlowBlockNodeView {
       return
     }
 
+    this.previewComponentVNode = h(flowPreviewComponent.value, {
+      key: previewKey,
+      ref: (instance: any) => {
+        this.previewComponentRef = instance
+        const { api } = this.resolvePreviewApi()
+        this.previewComponentApiRef = api
+      },
+      mode: 'preview',
+      capability: 'render-only',
+      data: previewData,
+      width: hostWidth,
+      height: scaledHeight
+    })
     render(
       h('div', {
         class: 'flow-nodeview-preview-stage',
@@ -503,34 +587,115 @@ class FlowBlockNodeView {
           width: '100%',
           height: `${scaledHeight}px`
         }
-      }, [
-        h(flowPreviewComponent.value, {
-          key: previewKey,
-          ref: (instance: any) => {
-            this.previewComponentRef = instance
-          },
-          mode: 'preview',
-          capability: 'render-only',
-          data: previewData,
-          width: hostWidth,
-          height: scaledHeight
-        })
-      ]),
+      }, [this.previewComponentVNode]),
       this.previewHost
     )
 
     const applyFitViewWithRetry = (attempt = 0) => {
-      const fitViewAvailable = !!(this.previewComponentRef && typeof this.previewComponentRef.fitView === 'function')
-      const fitViewApplied = fitViewAvailable
-        ? this.previewComponentRef.fitView(INLINE_FLOW_FIT_VERTICAL_OFFSET, INLINE_FLOW_FIT_HORIZONTAL_OFFSET)
-        : false
+      const resolved = this.resolvePreviewApi()
+      const previewApi = resolved.api || this.previewComponentApiRef
+      const previewApiSource = resolved.api ? resolved.source : (this.previewComponentApiRef ? 'cached' : resolved.source)
+      if (resolved.api) {
+        this.previewComponentApiRef = resolved.api
+      }
+      const resizeCanvasAvailable = !!(previewApi && typeof previewApi.resizeCanvas === 'function')
+      const fitViewAvailable = !!(previewApi && typeof previewApi.fitView === 'function')
+      const resetZoomAvailable = !!(previewApi && typeof previewApi.resetZoom === 'function')
+      const resetTranslateAvailable = !!(previewApi && typeof previewApi.resetTranslate === 'function')
+      const translateCenterAvailable = !!(previewApi && typeof previewApi.translateCenter === 'function')
+      const getTransformAvailable = !!(previewApi && typeof previewApi.getTransform === 'function')
+      const getGraphDataAvailable = !!(previewApi && typeof previewApi.getGraphData === 'function')
+      const graphData = getGraphDataAvailable ? previewApi.getGraphData() : null
+      const graphNodeCount = Array.isArray(graphData?.nodes) ? graphData.nodes.length : -1
 
-      if ((!fitViewAvailable || !fitViewApplied) && attempt < INLINE_FLOW_FIT_RETRY_LIMIT) {
+      if (graphNodeCount === 0) {
+        if (attempt < INLINE_FLOW_FIT_RETRY_LIMIT) {
+          this.fitViewRetryTimer = setTimeout(() => {
+            applyFitViewWithRetry(attempt + 1)
+          }, INLINE_FLOW_FIT_RETRY_DELAY_MS)
+        } else {
+          this.fitViewRetryTimer = null
+        }
+        return
+      }
+
+      if (resizeCanvasAvailable) {
+        previewApi.resizeCanvas()
+      }
+      if (resetZoomAvailable) {
+        previewApi.resetZoom()
+      }
+      if (resetTranslateAvailable) {
+        previewApi.resetTranslate()
+      }
+
+      let fitViewApplied = fitViewAvailable
+        ? previewApi.fitView(INLINE_FLOW_FIT_VERTICAL_OFFSET, INLINE_FLOW_FIT_HORIZONTAL_OFFSET)
+        : false
+      if (!fitViewApplied && translateCenterAvailable) {
+        fitViewApplied = previewApi.translateCenter()
+      }
+
+      let transformSnapshot = getTransformAvailable ? previewApi.getTransform() : null
+      let transformScale = Number(transformSnapshot?.SCALE_X ?? NaN)
+      if (
+        fitViewApplied
+        && fitViewAvailable
+        && widthScale < 0.999
+        && Number.isFinite(transformScale)
+        && transformScale > widthScale + 0.03
+      ) {
+        previewApi.fitView()
+        transformSnapshot = getTransformAvailable ? previewApi.getTransform() : transformSnapshot
+        transformScale = Number(transformSnapshot?.SCALE_X ?? NaN)
+      }
+
+      if ((!fitViewApplied && (fitViewAvailable || translateCenterAvailable)) && attempt < INLINE_FLOW_FIT_RETRY_LIMIT) {
+        this.fitViewRetryTimer = setTimeout(() => {
+          applyFitViewWithRetry(attempt + 1)
+        }, INLINE_FLOW_FIT_RETRY_DELAY_MS)
+      } else if ((!fitViewAvailable && !translateCenterAvailable) && attempt < INLINE_FLOW_FIT_RETRY_LIMIT) {
         this.fitViewRetryTimer = setTimeout(() => {
           applyFitViewWithRetry(attempt + 1)
         }, INLINE_FLOW_FIT_RETRY_DELAY_MS)
       } else {
         this.fitViewRetryTimer = null
+      }
+
+      if (this.fitViewVerifyTimer) {
+        clearTimeout(this.fitViewVerifyTimer)
+        this.fitViewVerifyTimer = null
+      }
+      if (fitViewApplied && getTransformAvailable && widthScale < 0.999) {
+        this.fitViewVerifyTimer = setTimeout(() => {
+          const verifyResolved = this.resolvePreviewApi()
+          const verifyApi = verifyResolved.api || this.previewComponentApiRef
+          if (!verifyApi || typeof verifyApi.getTransform !== 'function') {
+            if (this.fitViewVerifyTimer) {
+              clearTimeout(this.fitViewVerifyTimer)
+              this.fitViewVerifyTimer = null
+            }
+            return
+          }
+          const currentTransform = verifyApi.getTransform()
+          const currentScale = Number(currentTransform?.SCALE_X ?? NaN)
+          if (isFlowDebugEnabled()) {
+            console.info('[Editor][flow-debug][inline-preview-verify]', {
+              blockIndex: this.resolveCurrentBlockIndex(),
+              targetScale: Number(widthScale.toFixed(4)),
+              appliedScale: Number.isFinite(transformScale) ? Number(transformScale.toFixed(4)) : null,
+              currentScale: Number.isFinite(currentScale) ? Number(currentScale.toFixed(4)) : null,
+              currentTransform
+            })
+          }
+          if (Number.isFinite(currentScale) && currentScale > widthScale + 0.03) {
+            applyFitViewWithRetry(0)
+          }
+          if (this.fitViewVerifyTimer) {
+            clearTimeout(this.fitViewVerifyTimer)
+            this.fitViewVerifyTimer = null
+          }
+        }, 180)
       }
 
       if (!isFlowDebugEnabled()) {
@@ -553,10 +718,20 @@ class FlowBlockNodeView {
         hostHeight,
         actualCanvasWidth,
         actualCanvasHeight,
+        resizeCanvasAvailable,
         fitViewAvailable,
         fitViewApplied,
+        previewApiSource,
+        resetZoomAvailable,
+        resetTranslateAvailable,
+        translateCenterAvailable,
+        getTransformAvailable,
+        transformSnapshot,
+        getGraphDataAvailable,
+        graphNodeCount,
         fitViewAttempt: attempt + 1,
-        graphBounds: resolveGraphBounds(previewData)
+        graphBounds: resolveGraphBounds(previewData),
+        previewRefShape: this.resolvePreviewRefDebugShape()
       })
     }
 
@@ -854,7 +1029,7 @@ const focusEditor = () => {
 }
 
 const insertFlowBlock = () => {
-  insertText(`\n${buildOnmyojiEditorBlockFence('{\n  "height": 260,\n  "schemaVersion": 1,\n  "fileList": [\n    {\n      "id": "flow-1",\n      "label": "File 1",\n      "name": "File 1",\n      "visible": true,\n      "type": "FLOW",\n      "graphRawData": {\n        "nodes": [],\n        "edges": []\n      }\n    }\n  ],\n  "activeFileId": "flow-1",\n  "activeFile": "File 1"\n}')}\n`)
+  insertText(`\n${buildOnmyojiEditorBlockFence('{\n  "height": "auto",\n  "schemaVersion": 1,\n  "fileList": [\n    {\n      "id": "flow-1",\n      "label": "File 1",\n      "name": "File 1",\n      "visible": true,\n      "type": "FLOW",\n      "graphRawData": {\n        "nodes": [],\n        "edges": []\n      }\n    }\n  ],\n  "activeFileId": "flow-1",\n  "activeFile": "File 1"\n}')}\n`)
 }
 
 const getMarkdownContent = (): string => {
