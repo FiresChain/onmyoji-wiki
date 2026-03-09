@@ -24,6 +24,7 @@ type InlineFlowBlockMovePayload = {
   blockIndex: number
   direction: 'up' | 'down'
 }
+type FlowEmbedLocale = 'zh' | 'ja' | 'en'
 
 export type MilkdownEditorHandle = {
   isReady: () => boolean
@@ -57,6 +58,21 @@ const root = ref<HTMLDivElement | null>(null)
 const booting = ref(true)
 const bootError = ref('')
 const flowPreviewComponent = shallowRef<any>(null)
+const route = useRoute()
+
+const resolveFlowEmbedLocale = (value: unknown): FlowEmbedLocale => {
+  if (typeof value !== 'string') {
+    return 'zh'
+  }
+  const normalized = value.trim().toLowerCase().split('-')[0]
+  if (normalized === 'ja') {
+    return 'ja'
+  }
+  if (normalized === 'en') {
+    return 'en'
+  }
+  return 'zh'
+}
 
 let editor: any = null
 let getMarkdown: (() => string) | null = null
@@ -576,6 +592,7 @@ class FlowBlockNodeView {
       },
       mode: 'preview',
       capability: 'render-only',
+      config: { locale: resolveFlowEmbedLocale(route.params.locale) },
       data: previewData,
       width: hostWidth,
       height: scaledHeight

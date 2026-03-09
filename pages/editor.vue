@@ -58,6 +58,7 @@ type FlowBundleReference = {
 }
 
 type EditorViewMode = 'visual' | 'markdown' | 'split'
+type FlowEmbedLocale = 'zh' | 'ja' | 'en'
 const DEBUG_TOOLBAR = true
 const MAX_EDITOR_READY_RETRY = 30
 
@@ -118,6 +119,23 @@ const route = useRoute()
 const importInput = ref<HTMLInputElement | null>(null)
 let autosaveTimer: ReturnType<typeof setTimeout> | null = null
 let flowResizeInterval: ReturnType<typeof setInterval> | null = null
+
+const resolveFlowEmbedLocale = (value: unknown): FlowEmbedLocale => {
+  if (typeof value !== 'string') {
+    return 'zh'
+  }
+  const normalized = value.trim().toLowerCase().split('-')[0]
+  if (normalized === 'ja') {
+    return 'ja'
+  }
+  if (normalized === 'en') {
+    return 'en'
+  }
+  return 'zh'
+}
+
+const flowEmbedLocale = computed<FlowEmbedLocale>(() => resolveFlowEmbedLocale(route.params.locale))
+const flowEmbedConfig = computed(() => ({ locale: flowEmbedLocale.value }))
 let flowModalResizeObserver: ResizeObserver | null = null
 let flowModalFitRetryTimer: ReturnType<typeof setTimeout> | null = null
 let flowModalFitVerifyTimer: ReturnType<typeof setTimeout> | null = null
@@ -1558,6 +1576,7 @@ onBeforeUnmount(() => {
                 class="flow-modal-editor"
                 mode="edit"
                 capability="interactive"
+                :config="flowEmbedConfig"
                 :data="editingGraphData"
                 :height="flowEditorHeight"
                 :width="flowEditorWidth"

@@ -8,6 +8,7 @@ import { collectFlowAssetIssues, rewriteFlowAssetUrls, type AssetRenderPolicy } 
 
 type FlowCapabilityLevel = 'render-only' | 'interactive'
 type FlowPreviewType = 'file' | 'block'
+type FlowEmbedLocale = 'zh' | 'ja' | 'en'
 
 const props = withDefaults(defineProps<{
   type?: FlowPreviewType
@@ -50,6 +51,20 @@ let viewportResizeObserver: ResizeObserver | null = null
 let previewFitVerifyTimer: ReturnType<typeof setTimeout> | null = null
 const route = useRoute()
 
+const resolveFlowEmbedLocale = (value: unknown): FlowEmbedLocale => {
+  if (typeof value !== 'string') {
+    return 'zh'
+  }
+  const normalized = value.trim().toLowerCase().split('-')[0]
+  if (normalized === 'ja') {
+    return 'ja'
+  }
+  if (normalized === 'en') {
+    return 'en'
+  }
+  return 'zh'
+}
+
 const baseURL = computed(() => runtimeConfig.app.baseURL || '/')
 const resolvedCapability = computed<FlowCapabilityLevel>(() => {
   return props.capability || 'render-only'
@@ -60,6 +75,8 @@ const resolvedType = computed<FlowPreviewType>(() => {
   }
   return 'file'
 })
+const flowEmbedLocale = computed<FlowEmbedLocale>(() => resolveFlowEmbedLocale(route.params.locale))
+const flowEmbedConfig = computed(() => ({ locale: flowEmbedLocale.value }))
 
 const resolveSrcUrl = (src: string) => {
   if (!src) {
@@ -469,6 +486,7 @@ const exportData = () => {
           ref="previewRef"
           mode="preview"
           :capability="resolvedCapability"
+          :config="flowEmbedConfig"
           :data="flowData"
           :width="resolvedCanvasWidth"
           :height="resolvedCanvasHeight"
