@@ -92,9 +92,9 @@ export const buildOnmyojiEditorFileFence = (src: string, height?: number | 'auto
     : (Number.isFinite(normalized || NaN) && Number(normalized) > 0
         ? ` :height="${Number(normalized)}"`
         : '')
-  return `\`\`\`${ONMYOJI_EDITOR_LANGUAGE}{type="file" src="${src}"${heightSegment}}\n\`\`\``
+  return `\`\`\`${ONMYOJI_EDITOR_LANGUAGE} type="file" src="${src}"${heightSegment}\n\`\`\``
 }
 
 export const buildOnmyojiEditorBlockFence = (payload: string): string => (
-  `\`\`\`${ONMYOJI_EDITOR_LANGUAGE}{type="block"}\n${payload}\n\`\`\``
+  `\`\`\`${ONMYOJI_EDITOR_LANGUAGE} type="block"\n${payload}\n\`\`\``
 )

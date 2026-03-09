@@ -17,6 +17,7 @@ type SearchIndexItem = {
 
 type ContentPage = {
   path?: string
+  stem?: string
   lang?: 'zh' | 'en'
   title?: string
   summary?: string
@@ -30,18 +31,52 @@ type ContentPage = {
 const route = useRoute()
 const router = useRouter()
 
+const resolveRoutePathVariants = (rawPath: string) => {
+  const normalizedRaw = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
+  let decodedPath = normalizedRaw
+
+  try {
+    decodedPath = decodeURIComponent(normalizedRaw)
+  } catch {
+    decodedPath = normalizedRaw
+  }
+
+  return {
+    normalizedRaw,
+    decodedPath,
+    decodedStem: decodedPath.replace(/^\/+/, '')
+  }
+}
+
 const { data: page } = await useAsyncData<ContentPage>(
   () => `content-page-${route.path}`,
   async () => {
     try {
-      const doc = await queryCollection('content').path(route.path).first()
+      const { normalizedRaw, decodedPath, decodedStem } = resolveRoutePathVariants(route.path)
+
+      let doc = await queryCollection('content').path(normalizedRaw).first()
+      if (!doc && decodedPath !== normalizedRaw) {
+        doc = await queryCollection('content').path(decodedPath).first()
+      }
+
+      // Fallback for non-ASCII folder names: Content path may be slug-normalized,
+      // while stem keeps the source-relative path (with original CJK chars).
+      if (!doc) {
+        const allDocs = await queryCollection('content').all()
+        doc = allDocs.find((item) => {
+          const itemPath = String(item.path || '')
+          const itemStem = String(item.stem || '')
+          return itemPath === decodedPath || itemStem === decodedStem
+        })
+      }
+
       if (doc) {
         return {
           ...(doc as ContentPage),
           __missing: false
         }
       }
-      return { __missing: true, path: route.path }
+      return { __missing: true, path: decodedPath, stem: decodedStem }
     } catch (error) {
       console.error('[content] failed to load page', route.path, error)
       return { __missing: true, path: route.path }

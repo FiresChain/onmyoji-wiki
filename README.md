@@ -46,14 +46,14 @@ npm run preview
 ### 1. 文件引用（type=file）
 
 ````md
-```onmyoji-editor{type="file" src="/data/flows/test-flow.json" :height="500"}
+```onmyoji-editor type="file" src="/data/flows/test-flow.json" :height="500"
 ```
 ````
 
 ### 2. 内联数据（type=block）
 
 ````md
-```onmyoji-editor{type="block"}
+```onmyoji-editor type="block"
 {
   "height": 320,
   "schemaVersion": 1,
