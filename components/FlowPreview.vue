@@ -235,6 +235,18 @@ const previewViewportHeight = computed(() => {
 })
 
 const previewHeight = computed(() => `${previewViewportHeight.value}px`)
+const previewReady = computed(() => viewportWidth.value > 0 && resolvedCanvasHeight.value > 0)
+const previewRenderKey = computed(() => {
+  const nodes = Array.isArray(flowData.value?.nodes) ? flowData.value.nodes.length : 0
+  const edges = Array.isArray(flowData.value?.edges) ? flowData.value.edges.length : 0
+  return [
+    resolvedType.value,
+    resolvedCanvasWidth.value,
+    resolvedCanvasHeight.value,
+    nodes,
+    edges
+  ].join(':')
+})
 
 const debugLayoutEnabled = computed(() => {
   if (props.debugLayout) {
@@ -278,7 +290,7 @@ const clearPreviewFitVerifyTimer = () => {
 const previewRef = ref<any>()
 
 const applyPreviewFitView = (attempt = 0) => {
-  if (!import.meta.client || !props.autoScale || loading.value || !!errorMessage.value) {
+  if (!import.meta.client || !previewReady.value || !props.autoScale || loading.value || !!errorMessage.value) {
     clearPreviewFitVerifyTimer()
     return
   }
@@ -483,6 +495,8 @@ const exportData = () => {
         :style="{ height: previewHeight }"
       >
         <YysEditorPreview
+          v-if="previewReady"
+          :key="previewRenderKey"
           ref="previewRef"
           mode="preview"
           :capability="resolvedCapability"
