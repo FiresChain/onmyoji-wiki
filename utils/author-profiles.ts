@@ -16,11 +16,11 @@ export const AUTHOR_PROFILES: Record<string, AuthorProfile> = {
     specialties: ['御魂副本', '秘闻副本', '阵容教学'],
     avatar: '/authors/duoluojiabaili.jpg'
   },
-  kaze: {
-    id: 'kaze',
+  xc128067: {
+    id: 'xc128067',
     name: '畅畅any',
     tagline: '实战拆解与配队向创作者',
-    bio: '聚焦实战回合与配装细节，强调阵容思路与可落地替换方案。',
+    bio: '每晚18:30直播 送灯牌免费看号做阵容! 不接任何阴阳师业务!',
     specialties: ['实战解析', '阵容构筑', '配装思路'],
     avatar: '/authors/changchangany.jpg'
   }

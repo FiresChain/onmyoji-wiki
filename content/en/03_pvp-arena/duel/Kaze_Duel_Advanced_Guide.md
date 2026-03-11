@@ -4,8 +4,8 @@ lang: en
 translationKey: guide-duel-advanced
 categoryL1: PvP Arena
 categoryL2: Duel
-authorId: kaze
-authorName: Kaze
+authorId: xc128067
+authorName: 畅畅any
 updatedAt: 2026-03-03
 summary: Advanced duel strategy across openers, tempo, and target priority.
 description: Practical PvP guide for speed tiers and matchup adaptation.

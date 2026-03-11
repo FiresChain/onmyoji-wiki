@@ -4,8 +4,8 @@ lang: en
 translationKey: guide-yamabunny-floor10-budget
 categoryL1: Secret Zones
 categoryL2: Yamabunny Rampage
-authorId: kaze
-authorName: Kaze
+authorId: xc128067
+authorName: 畅畅any
 updatedAt: 2026-03-03
 summary: Budget-friendly clear plan for Floor 10.
 description: Low-investment team routing with practical replacement options.

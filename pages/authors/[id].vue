@@ -145,6 +145,10 @@ const displayHeroTitle = computed(() => {
 })
 const displayHeroSubtitle = computed(() => authorStaticDoc.value?.heroSubtitle || '')
 const bilibiliUrl = computed(() => authorStaticDoc.value?.bilibiliUrl?.trim() || '')
+const douyinUrl = computed(() => {
+  const doc = authorStaticDoc.value
+  return doc?.douyinUrl?.trim() || doc?.meta?.douyinUrl?.trim() || ''
+})
 const displayAvatar = computed(() => resolvePublicAssetUrl(authorProfile.value.avatar?.trim()))
 const isAvatarBroken = ref(false)
 watch(authorId, () => {
@@ -231,6 +235,22 @@ const mergedTags = computed(() => {
           </div>
           <p class="bio">{{ authorProfile.bio }}</p>
           <p class="meta">共发布 {{ guideCount }} 篇攻略</p>
+          <a
+            v-if="douyinUrl"
+            class="douyin-link"
+            :href="douyinUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="douyin-icon" aria-hidden="true">
+              <svg viewBox="0 0 1024 1024" role="img">
+                <path
+                  d="M512 0C229.2 0 0 229.2 0 512s229.2 512 512 512 512-229.2 512-512S794.8 0 512 0zm291.4 611.2c-12.8 0-25.6-3.2-38.4-9.6-25.6-12.8-44.8-35.2-54.4-60.8-3.2-9.6-6.4-19.2-6.4-28.8V384c0-35.2-28.8-64-64-64s-64 28.8-64 64v128c0 9.6-3.2 19.2-6.4 28.8-9.6 25.6-28.8 48-54.4 60.8-12.8 6.4-25.6 9.6-38.4 9.6-35.2 0-64-28.8-64-64V384c0-35.2-28.8-64-64-64s-64 28.8-64 64v163.2c0 35.2 28.8 64 64 64 12.8 0 25.6-3.2 38.4-9.6 25.6-12.8 44.8-35.2 54.4-60.8 3.2-9.6 6.4-19.2 6.4-28.8V384c0-35.2 28.8-64 64-64s64 28.8 64 64v128c0 9.6 3.2 19.2 6.4 28.8 9.6 25.6 28.8 48 54.4 60.8 12.8 6.4 25.6 9.6 38.4 9.6 35.2 0 64-28.8 64-64V384c0-35.2 28.8-64 64-64s64 28.8 64 64v163.2c0 35.2-28.8 64-64 64z"
+                />
+              </svg>
+            </span>
+            <span>抖音主页</span>
+          </a>
           <a
             v-if="bilibiliUrl"
             class="bilibili-link"
@@ -376,6 +396,35 @@ const mergedTags = computed(() => {
 }
 
 .bilibili-icon svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+
+.douyin-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  text-decoration: none;
+  color: var(--color-foreground);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.douyin-link:hover {
+  text-decoration: underline;
+  color: var(--color-primary);
+}
+
+.douyin-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  color: currentColor;
+}
+
+.douyin-icon svg {
   width: 100%;
   height: 100%;
   fill: currentColor;
