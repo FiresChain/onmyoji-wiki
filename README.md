@@ -1,6 +1,6 @@
 # Onmyoji Wiki
 
-基于 Nuxt Content(MDC) 的阴阳师 Wiki，集成 `yys-editor` 流程图预览能力。
+基于 Nuxt Content(MDC) 的阴阳师 Wiki，集成 `onmyoji-flow` 流程图预览能力。
 
 ## 当前状态
 
