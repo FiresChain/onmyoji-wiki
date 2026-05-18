@@ -1,9 +1,10 @@
-name: Sync Assets From yys-editor
+name: Sync Assets From onmyoji-flow
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * 1'
+    # Thu/Fri 17:30 CST, GitHub cron uses UTC.
+    - cron: '30 9 * * 4,5'
 
 permissions:
   contents: write
@@ -21,22 +22,24 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Checkout yys-editor
+      - name: Checkout onmyoji-flow
         uses: actions/checkout@v4
         with:
-          repository: Powerful-517/yys-editor
-          ref: main
-          path: .upstream/yys-editor
+          repository: FiresChain/onmyoji-flow
+          ref: master
+          path: .upstream/onmyoji-flow
 
       - name: Sync selected directories
         run: |
           set -eux
-          rsync -av --delete .upstream/yys-editor/public/assets/ public/assets/
+          for dir in Shikigami Yuhun HunLing Onmyoji OnmyojiSkill Other; do
+            rsync -av --delete ".upstream/onmyoji-flow/public/assets/${dir}/" "public/assets/${dir}/"
+          done
 
       - name: Commit and push if changed
         run: |
           set -eux
-          if git diff --quiet -- public/assets; then
+          if git diff --quiet -- public/assets && [ -z "$(git status --short -- public/assets)" ]; then
             echo "No asset changes."
             exit 0
           fi
@@ -44,5 +47,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/assets
-          git commit -m "chore: sync assets from yys-editor"
+          git commit -m "chore: sync assets from onmyoji-flow"
           git push origin HEAD:main
