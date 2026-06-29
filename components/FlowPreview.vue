@@ -76,7 +76,13 @@ const resolvedType = computed<FlowPreviewType>(() => {
   return 'file'
 })
 const flowEmbedLocale = computed<FlowEmbedLocale>(() => resolveFlowEmbedLocale(route.params.locale))
-const flowEmbedConfig = computed(() => ({ locale: flowEmbedLocale.value }))
+const flowEmbedConfig = computed(() => ({
+  locale: flowEmbedLocale.value,
+  teamCodeCopy: {
+    enabled: true,
+    visibility: 'auto'
+  }
+}))
 
 const resolveSrcUrl = (src: string) => {
   if (!src) {
