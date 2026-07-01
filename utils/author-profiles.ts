@@ -23,6 +23,13 @@ export const AUTHOR_PROFILES: Record<string, AuthorProfile> = {
     bio: '每晚18:30直播 送灯牌免费看号做阵容! 不接任何阴阳师业务!',
     specialties: ['实战解析', '阵容构筑', '配装思路'],
     avatar: '/authors/changchangany.jpg'
+  },
+  'matrix-doctor': {
+    id: 'matrix-doctor',
+    name: '矩阵博士',
+    tagline: '竞速流程与阵容配置创作者',
+    bio: '专注阴阳师竞速阵容与流程整理，提供可参考的配速、面板与操作说明。',
+    specialties: ['秘闻竞速', '阵容配置', '流程拆解']
   }
 }
 
