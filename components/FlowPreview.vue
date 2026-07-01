@@ -68,6 +68,8 @@ const canvasViewportRef = ref<HTMLElement | null>(null);
 const viewportWidth = ref(0);
 const flowActionMenuOpen = ref(false);
 const copyFeedbackActive = ref(false);
+const copyFeedbackMessage = ref("");
+const copyFeedbackVariant = ref<"success" | "error">("success");
 const flowPreviewComponent = shallowRef<any>(null);
 const runtimeConfig = useRuntimeConfig();
 let viewportResizeObserver: ResizeObserver | null = null;
@@ -382,6 +384,38 @@ const clearCopyFeedbackTimer = () => {
   }
 };
 
+const showCopyFeedback = (
+  message: string,
+  variant: "success" | "error" = "success",
+) => {
+  copyFeedbackMessage.value = message;
+  copyFeedbackVariant.value = variant;
+  copyFeedbackActive.value = variant === "success";
+  clearCopyFeedbackTimer();
+  copyFeedbackTimer = setTimeout(() => {
+    copyFeedbackActive.value = false;
+    copyFeedbackMessage.value = "";
+    copyFeedbackTimer = null;
+  }, 1400);
+};
+
+const writeTextToClipboard = async (text: string) => {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-1000px";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+};
+
 const previewRef = ref<any>();
 
 const alignPreviewContentTop = (preview: any): boolean => {
@@ -658,15 +692,11 @@ const copyPrimaryTeamCode = async () => {
     return;
   }
   try {
-    await navigator.clipboard.writeText(item.code);
-    copyFeedbackActive.value = true;
-    clearCopyFeedbackTimer();
-    copyFeedbackTimer = setTimeout(() => {
-      copyFeedbackActive.value = false;
-      copyFeedbackTimer = null;
-    }, 1400);
+    await writeTextToClipboard(item.code);
+    showCopyFeedback("复制成功");
   } catch (error) {
     console.error("Failed to copy team code:", error);
+    showCopyFeedback("复制失败", "error");
   }
 };
 
@@ -722,6 +752,15 @@ const toggleFlowActionMenu = () => {
             <path d="M5 15V7a2 2 0 0 1 2-2h8" />
           </svg>
         </button>
+        <div
+          v-if="copyFeedbackMessage"
+          class="flow-copy-feedback"
+          :class="`is-${copyFeedbackVariant}`"
+          role="status"
+          aria-live="polite"
+        >
+          {{ copyFeedbackMessage }}
+        </div>
         <div class="flow-menu-wrap">
           <button
             type="button"
@@ -855,6 +894,29 @@ const toggleFlowActionMenu = () => {
   color: #9ca3af;
   cursor: not-allowed;
   opacity: 0.72;
+}
+
+.flow-copy-feedback {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 36px;
+  min-width: 72px;
+  padding: 5px 8px;
+  color: #047857;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  background: rgba(240, 253, 244, 0.96);
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  border-radius: 6px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+}
+
+.flow-copy-feedback.is-error {
+  color: #b91c1c;
+  background: rgba(254, 242, 242, 0.96);
+  border-color: rgba(239, 68, 68, 0.45);
 }
 
 .flow-action-icon {
