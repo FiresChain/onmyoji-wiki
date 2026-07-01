@@ -1,0 +1,1110 @@
+{
+  "height": "auto",
+  "schemaVersion": 1,
+  "fileList": [
+    {
+      "id": "flow-1",
+      "label": "File 1",
+      "name": "File 1",
+      "visible": true,
+      "type": "FLOW",
+      "graphRawData": {
+        "nodes": [
+          {
+            "id": "text_mqz0zx7n1x8q1s6",
+            "type": "textNode",
+            "x": 644,
+            "y": 352,
+            "properties": {
+              "width": 860,
+              "height": 84,
+              "text": {
+                "content": "<p style=\"margin:0;text-align:left;font-size:32px;line-height:1.2;\"><strong>4099–清流</strong></p>",
+                "rich": true
+              },
+              "style": {
+                "width": 860,
+                "height": 84,
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "transparent",
+                  "blur": 0,
+                  "offsetX": 0,
+                  "offsetY": 0
+                }
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              }
+            },
+            "zIndex": 10
+          },
+          {
+            "id": "asset_mqz0zx7n4s8ty1o",
+            "type": "assetSelector",
+            "x": 288,
+            "y": 527,
+            "properties": {
+              "assetLibrary": "onmyoji",
+              "selectedAsset": {
+                "id": "16",
+                "assetId": "onmyoji:16",
+                "onmyojiId": "16",
+                "library": "onmyoji",
+                "name": "藤原道长",
+                "avatar": "/assets/Onmyoji/hero_16_16.png",
+                "source": "team-code"
+              },
+              "width": 147,
+              "height": 147,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "藤原道长"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mqz0zx7ngu7uivz",
+            "type": "assetSelector",
+            "x": 320,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "onmyojiSkill",
+              "selectedAsset": {
+                "id": "16:1604",
+                "assetId": "onmyojiSkill:16:1604",
+                "skillId": "1604",
+                "onmyojiId": "16",
+                "library": "onmyojiSkill",
+                "name": "破阵奏曲 Lv5",
+                "avatar": "/assets/OnmyojiSkill/hero_16_skill_1604.png",
+                "source": "team-code"
+              },
+              "width": 68,
+              "height": 67,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "破阵奏曲 Lv5"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 100,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mqz0zx7njq4838c",
+            "type": "assetSelector",
+            "x": 385,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "onmyojiSkill",
+              "selectedAsset": {
+                "id": "16:1607",
+                "assetId": "onmyojiSkill:16:1607",
+                "skillId": "1607",
+                "onmyojiId": "16",
+                "library": "onmyojiSkill",
+                "name": "神鸟惊弦 Lv5",
+                "avatar": "/assets/OnmyojiSkill/hero_16_skill_1607.png",
+                "source": "team-code"
+              },
+              "width": 68,
+              "height": 67,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "神鸟惊弦 Lv5"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 100,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mqz0zx7n4sa24ra",
+            "type": "dynamic-group",
+            "x": 320,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mqz0zx7n4s8ty1o",
+                "asset_mqz0zx7ngu7uivz",
+                "asset_mqz0zx7njq4838c"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "阴阳师",
+                "ruleEnabled": false,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9998,
+            "children": [
+              "asset_mqz0zx7n4s8ty1o",
+              "asset_mqz0zx7ngu7uivz",
+              "asset_mqz0zx7njq4838c"
+            ]
+          },
+          {
+            "id": "asset_mqz0zx7nzplgtky",
+            "type": "assetSelector",
+            "x": 580,
+            "y": 520,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "id": "583",
+                "assetId": "shikigami:583",
+                "library": "shikigami",
+                "name": "卑弥呼",
+                "avatar": "/assets/Shikigami/ssr/583.png",
+                "rarity": "SSR",
+                "source": "team-code"
+              },
+              "width": 180,
+              "height": 180,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "卑弥呼"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 200,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mqz0zx7nftgg1mr",
+            "type": "assetSelector",
+            "x": 632,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300000",
+                "assetId": "yuhun:300000",
+                "library": "yuhun",
+                "name": "散件",
+                "shortName": "散件",
+                "type": "attack",
+                "avatar": "/assets/Yuhun/300000.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "散件"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mqz0zx7nzjlw5hv",
+            "type": "dynamic-group",
+            "x": 580,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mqz0zx7nzplgtky",
+                "asset_mqz0zx7nftgg1mr"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "卑弥呼",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9997,
+            "children": [
+              "asset_mqz0zx7nzplgtky",
+              "asset_mqz0zx7nftgg1mr"
+            ]
+          },
+          {
+            "id": "asset_mqz0zx7nvsecwd6",
+            "type": "assetSelector",
+            "x": 840,
+            "y": 520,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "id": "592",
+                "assetId": "shikigami:592",
+                "library": "shikigami",
+                "name": "平将门",
+                "avatar": "/assets/Shikigami/ssr/592.png",
+                "rarity": "SSR",
+                "source": "team-code"
+              },
+              "width": 180,
+              "height": 180,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "平将门"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 200,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mqz0zx7n9l8llt2",
+            "type": "assetSelector",
+            "x": 892,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300021",
+                "assetId": "yuhun:300021",
+                "library": "yuhun",
+                "name": "薙魂",
+                "shortName": "薙魂",
+                "type": "Health",
+                "avatar": "/assets/Yuhun/300021.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "薙魂"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mqz0zx7njv5lfbw",
+            "type": "dynamic-group",
+            "x": 840,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mqz0zx7nvsecwd6",
+                "asset_mqz0zx7n9l8llt2"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "平将门",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9996,
+            "children": [
+              "asset_mqz0zx7nvsecwd6",
+              "asset_mqz0zx7n9l8llt2"
+            ]
+          },
+          {
+            "id": "asset_mqz0zx7narpiypi",
+            "type": "assetSelector",
+            "x": 1100,
+            "y": 520,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "id": "601",
+                "assetId": "shikigami:601",
+                "library": "shikigami",
+                "name": "式神#601",
+                "avatar": "",
+                "rarity": "",
+                "source": "team-code"
+              },
+              "width": 180,
+              "height": 180,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "式神#601"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 200,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mqz0zx7npf2fcku",
+            "type": "assetSelector",
+            "x": 1152,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300008",
+                "assetId": "yuhun:300008",
+                "library": "yuhun",
+                "name": "魍魉之匣",
+                "shortName": "魍魉",
+                "type": "ControlMiss",
+                "avatar": "/assets/Yuhun/300008.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "魍魉之匣"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mqz0zx7nw01lu4t",
+            "type": "dynamic-group",
+            "x": 1100,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mqz0zx7narpiypi",
+                "asset_mqz0zx7npf2fcku"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "式神#601",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9995,
+            "children": [
+              "asset_mqz0zx7narpiypi",
+              "asset_mqz0zx7npf2fcku"
+            ]
+          },
+          {
+            "id": "asset_mqz0zx7n3x951oe",
+            "type": "assetSelector",
+            "x": 1360,
+            "y": 520,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "id": "602",
+                "assetId": "shikigami:602",
+                "library": "shikigami",
+                "name": "式神#602",
+                "avatar": "",
+                "rarity": "",
+                "source": "team-code"
+              },
+              "width": 180,
+              "height": 180,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "式神#602"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 200,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mqz0zx7nejjc8ey",
+            "type": "assetSelector",
+            "x": 1412,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300026",
+                "assetId": "yuhun:300026",
+                "library": "yuhun",
+                "name": "网切",
+                "shortName": "网",
+                "type": "Crit",
+                "avatar": "/assets/Yuhun/300026.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "网切"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mqz0zx7npt73t9s",
+            "type": "dynamic-group",
+            "x": 1360,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mqz0zx7n3x951oe",
+                "asset_mqz0zx7nejjc8ey"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "式神#602",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9994,
+            "children": [
+              "asset_mqz0zx7n3x951oe",
+              "asset_mqz0zx7nejjc8ey"
+            ]
+          },
+          {
+            "id": "asset_mqz0zx7n2yuin70",
+            "type": "assetSelector",
+            "x": 1620,
+            "y": 520,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "id": "365",
+                "assetId": "shikigami:365",
+                "library": "shikigami",
+                "name": "入内雀",
+                "avatar": "/assets/Shikigami/sr/365.png",
+                "rarity": "SR",
+                "source": "team-code"
+              },
+              "width": 180,
+              "height": 180,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "入内雀"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 200,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mqz0zx7n31a0gsv",
+            "type": "assetSelector",
+            "x": 1672,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300023",
+                "assetId": "yuhun:300023",
+                "library": "yuhun",
+                "name": "木魅",
+                "shortName": "木魅",
+                "type": "Defense",
+                "avatar": "/assets/Yuhun/300023.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "木魅"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mqz0zx7n6nuckmd",
+            "type": "dynamic-group",
+            "x": 1620,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mqz0zx7n2yuin70",
+                "asset_mqz0zx7n31a0gsv"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "入内雀",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9993,
+            "children": [
+              "asset_mqz0zx7n2yuin70",
+              "asset_mqz0zx7n31a0gsv"
+            ]
+          },
+          {
+            "id": "group_mqz0zx7ntrkiak3",
+            "type": "dynamic-group",
+            "x": 970,
+            "y": 520,
+            "properties": {
+              "children": [
+                "group_mqz0zx7n4sa24ra",
+                "group_mqz0zx7nzjlw5hv",
+                "group_mqz0zx7njv5lfbw",
+                "group_mqz0zx7nw01lu4t",
+                "group_mqz0zx7npt73t9s",
+                "group_mqz0zx7n6nuckmd"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 1830,
+              "height": 340,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 1830,
+                "height": 340,
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#c7ced9",
+                "strokeWidth": 2,
+                "radius": 8,
+                "opacity": 1,
+                "shadow": {
+                  "color": "transparent",
+                  "blur": 0,
+                  "offsetX": 0,
+                  "offsetY": 0
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "team",
+                "groupName": "4099–清流·队伍",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "team-shikigami",
+                  "team-yuhun",
+                  "team-shikigami-yuhun"
+                ],
+                "teamCode": {
+                  "enabled": true,
+                  "shortCode": "ccc",
+                  "longCode": "aaaa",
+                  "preferred": "long",
+                  "label": "copy"
+                }
+              }
+            },
+            "zIndex": -9999,
+            "children": [
+              "group_mqz0zx7n4sa24ra",
+              "group_mqz0zx7nzjlw5hv",
+              "group_mqz0zx7njv5lfbw",
+              "group_mqz0zx7nw01lu4t",
+              "group_mqz0zx7npt73t9s",
+              "group_mqz0zx7n6nuckmd"
+            ]
+          }
+        ],
+        "edges": []
+      }
+    }
+  ],
+  "activeFileId": "flow-1",
+  "activeFile": "File 1"
+}

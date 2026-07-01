@@ -48,7 +48,8 @@ export default defineNuxtConfig({
       fs: {
         allow: [
           // monorepo 联调时，允许访问工作区根 node_modules（如 milkdown 样式）
-          '../node_modules'
+          '../node_modules',
+          '../onmyoji-flow'
         ]
       }
     }

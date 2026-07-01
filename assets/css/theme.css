@@ -316,6 +316,12 @@ img {
   border-bottom: 1px solid var(--color-border);
 }
 
+.wiki-prose h2,
+.wiki-prose h3,
+.wiki-prose h4 {
+  scroll-margin-top: 88px;
+}
+
 .wiki-prose p {
   margin: 0 0 1em;
   color: color-mix(in srgb, var(--color-foreground) 88%, transparent);
