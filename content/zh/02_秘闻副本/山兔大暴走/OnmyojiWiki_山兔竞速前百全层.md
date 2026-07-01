@@ -2,6 +2,7 @@
 title: 山兔竞速前百全层攻略
 lang: zh
 translationKey: guide-yamabunny-speedrun-top100-all-stages
+routeKey: secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages
 categoryL1: 秘闻副本
 categoryL2: 山兔大暴走
 authorId: matrix-doctor

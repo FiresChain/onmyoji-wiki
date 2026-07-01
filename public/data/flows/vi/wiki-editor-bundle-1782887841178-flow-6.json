@@ -1,0 +1,1282 @@
+{
+  "height": "auto",
+  "schemaVersion": 1,
+  "fileList": [
+    {
+      "id": "flow-1",
+      "label": "File 1",
+      "name": "File 1",
+      "visible": true,
+      "type": "FLOW",
+      "graphRawData": {
+        "nodes": [
+          {
+            "id": "text_mr1o5ae1f7vitzu",
+            "type": "textNode",
+            "x": 644,
+            "y": 352,
+            "properties": {
+              "width": 860,
+              "height": 84,
+              "text": {
+                "content": "<p style=\"margin:0;text-align:left;font-size:32px;line-height:1.2;\"><strong>【Sơn Thố đua tốc top 100】Tầng 10</strong></p>",
+                "rich": true
+              },
+              "style": {
+                "width": 860,
+                "height": 84,
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "transparent",
+                  "blur": 0,
+                  "offsetX": 0,
+                  "offsetY": 0
+                }
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              }
+            },
+            "zIndex": 10
+          },
+          {
+            "id": "text_mr1o5ae19l3mvlj",
+            "type": "textNode",
+            "x": 644,
+            "y": 680,
+            "properties": {
+              "width": 860,
+              "height": 84,
+              "text": {
+                "content": "<p style=\"margin:0;text-align:left;font-size:24px;line-height:1.45;\">Hướng dẫn này là lộ trình top 100 thông thường, không dùng thức thần liên động.</p>",
+                "rich": true
+              },
+              "style": {
+                "width": 860,
+                "height": 84,
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "transparent",
+                  "blur": 0,
+                  "offsetX": 0,
+                  "offsetY": 0
+                }
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              }
+            },
+            "zIndex": 10
+          },
+          {
+            "id": "asset_mr1o5ae1z1cyanh",
+            "type": "assetSelector",
+            "x": 288,
+            "y": 527,
+            "properties": {
+              "assetLibrary": "onmyoji",
+              "selectedAsset": {
+                "id": "12",
+                "assetId": "onmyoji:12",
+                "onmyojiId": "12",
+                "library": "onmyoji",
+                "name": "Bát Bách Bỉ Khâu Ni",
+                "avatar": "/assets/Onmyoji/hero_12_12.png",
+                "source": "team-code"
+              },
+              "width": 147,
+              "height": 147,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Bát Bách Bỉ Khâu Ni"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mr1o5ae1h1mu246",
+            "type": "assetSelector",
+            "x": 320,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "onmyojiSkill",
+              "selectedAsset": {
+                "id": "12:1203",
+                "assetId": "onmyojiSkill:12:1203",
+                "skillId": "1203",
+                "onmyojiId": "12",
+                "library": "onmyojiSkill",
+                "name": "Dự Tri Lv5",
+                "avatar": "/assets/OnmyojiSkill/hero_12_skill_1203.png",
+                "source": "team-code"
+              },
+              "width": 68,
+              "height": 67,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Dự Tri Lv5"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 100,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mr1o5ae13tblfs2",
+            "type": "assetSelector",
+            "x": 385,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "onmyojiSkill",
+              "selectedAsset": {
+                "id": "12:1204",
+                "assetId": "onmyojiSkill:12:1204",
+                "skillId": "1204",
+                "onmyojiId": "12",
+                "library": "onmyojiSkill",
+                "name": "Tinh Vẫn Lv5",
+                "avatar": "/assets/OnmyojiSkill/hero_12_skill_1204.png",
+                "source": "team-code"
+              },
+              "width": 68,
+              "height": 67,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Tinh Vẫn Lv5"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 100,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mr1o5ae1wn4lsrw",
+            "type": "dynamic-group",
+            "x": 320,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mr1o5ae1z1cyanh",
+                "asset_mr1o5ae1h1mu246",
+                "asset_mr1o5ae13tblfs2"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "Âm Dương Sư",
+                "ruleEnabled": false,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9998,
+            "children": [
+              "asset_mr1o5ae1z1cyanh",
+              "asset_mr1o5ae1h1mu246",
+              "asset_mr1o5ae13tblfs2"
+            ]
+          },
+          {
+            "id": "asset_mr1o5ae1m9rm8rg",
+            "type": "assetSelector",
+            "x": 580,
+            "y": 520,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "id": "556",
+                "assetId": "shikigami:556",
+                "library": "shikigami",
+                "name": "Amaterasu",
+                "avatar": "/assets/Shikigami/ssr/556.png",
+                "rarity": "SSR",
+                "source": "team-code"
+              },
+              "width": 180,
+              "height": 180,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Amaterasu"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 200,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mr1o5ae1kemxovi",
+            "type": "assetSelector",
+            "x": 600,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300083",
+                "assetId": "yuhun:300083",
+                "library": "yuhun",
+                "name": "Hải Nguyệt Hỏa Ngọc",
+                "shortName": "Hải",
+                "type": "Crit",
+                "avatar": "/assets/Yuhun/300083.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Hải Nguyệt Hỏa Ngọc"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mr1o5ae1btgosm6",
+            "type": "assetSelector",
+            "x": 641,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300077",
+                "assetId": "yuhun:300077",
+                "library": "yuhun",
+                "name": "Quỷ Linh Ca Kỹ",
+                "shortName": "Ca Kỹ",
+                "type": "PVE",
+                "avatar": "/assets/Yuhun/300077.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Quỷ Linh Ca Kỹ"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mr1o5ae17ug1iy4",
+            "type": "dynamic-group",
+            "x": 580,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mr1o5ae1m9rm8rg",
+                "asset_mr1o5ae1kemxovi",
+                "asset_mr1o5ae1btgosm6"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "Amaterasu",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9997,
+            "children": [
+              "asset_mr1o5ae1m9rm8rg",
+              "asset_mr1o5ae1kemxovi",
+              "asset_mr1o5ae1btgosm6"
+            ]
+          },
+          {
+            "id": "asset_mr1o5ae1qtdaidr",
+            "type": "assetSelector",
+            "x": 840,
+            "y": 520,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "id": "341",
+                "assetId": "shikigami:341",
+                "library": "shikigami",
+                "name": "Quỷ Vương Tửu Thôn Đồng Tử",
+                "avatar": "/assets/Shikigami/sp/341.png",
+                "rarity": "SP",
+                "source": "team-code"
+              },
+              "width": 180,
+              "height": 180,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Quỷ Vương Tửu Thôn Đồng Tử"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 200,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mr1o5ae1qgygnfq",
+            "type": "assetSelector",
+            "x": 892,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300034",
+                "assetId": "yuhun:300034",
+                "library": "yuhun",
+                "name": "Bạng Tinh",
+                "shortName": "Bạng Tinh",
+                "type": "ControlHit",
+                "avatar": "/assets/Yuhun/300034.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Bạng Tinh"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mr1o5ae1i7tvjlk",
+            "type": "dynamic-group",
+            "x": 840,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mr1o5ae1qtdaidr",
+                "asset_mr1o5ae1qgygnfq"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "Quỷ Vương Tửu Thôn Đồng Tử",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9996,
+            "children": [
+              "asset_mr1o5ae1qtdaidr",
+              "asset_mr1o5ae1qgygnfq"
+            ]
+          },
+          {
+            "id": "asset_mr1o5ae1sdav1i2",
+            "type": "assetSelector",
+            "x": 1100,
+            "y": 520,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "id": "557",
+                "assetId": "shikigami:557",
+                "library": "shikigami",
+                "name": "Izanami",
+                "avatar": "/assets/Shikigami/ssr/557.png",
+                "rarity": "SSR",
+                "source": "team-code"
+              },
+              "width": 180,
+              "height": 180,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Izanami"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 200,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mr1o5ae12aw1qzr",
+            "type": "assetSelector",
+            "x": 1120,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300022",
+                "assetId": "yuhun:300022",
+                "library": "yuhun",
+                "name": "Tâm Nhãn",
+                "shortName": "Tâm",
+                "type": "attack",
+                "avatar": "/assets/Yuhun/300022.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Tâm Nhãn"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mr1o5ae15brzvrf",
+            "type": "assetSelector",
+            "x": 1161,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300053",
+                "assetId": "yuhun:300053",
+                "library": "yuhun",
+                "name": "Địa Chấn Niêm",
+                "shortName": "Địa Chấn Niêm",
+                "type": "PVE",
+                "avatar": "/assets/Yuhun/300053.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Địa Chấn Niêm"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mr1o5ae1z2ikel2",
+            "type": "dynamic-group",
+            "x": 1100,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mr1o5ae1sdav1i2",
+                "asset_mr1o5ae12aw1qzr",
+                "asset_mr1o5ae15brzvrf"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "Izanami",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9995,
+            "children": [
+              "asset_mr1o5ae1sdav1i2",
+              "asset_mr1o5ae12aw1qzr",
+              "asset_mr1o5ae15brzvrf"
+            ]
+          },
+          {
+            "id": "asset_mr1o5ae114ygj0i",
+            "type": "assetSelector",
+            "x": 1360,
+            "y": 520,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "id": "372",
+                "assetId": "shikigami:372",
+                "library": "shikigami",
+                "name": "Inaba Kaguya",
+                "avatar": "/assets/Shikigami/sp/372.png",
+                "rarity": "SP",
+                "source": "team-code"
+              },
+              "width": 180,
+              "height": 180,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Inaba Kaguya"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 200,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mr1o5ae17yojr6u",
+            "type": "assetSelector",
+            "x": 1412,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300000",
+                "assetId": "yuhun:300000",
+                "library": "yuhun",
+                "name": "Set lẻ",
+                "shortName": "Set lẻ",
+                "type": "attack",
+                "avatar": "/assets/Yuhun/300000.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Set lẻ"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mr1o5ae1w5eymfy",
+            "type": "dynamic-group",
+            "x": 1360,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mr1o5ae114ygj0i",
+                "asset_mr1o5ae17yojr6u"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "Inaba Kaguya",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9994,
+            "children": [
+              "asset_mr1o5ae114ygj0i",
+              "asset_mr1o5ae17yojr6u"
+            ]
+          },
+          {
+            "id": "asset_mr1o5ae1974rl9m",
+            "type": "assetSelector",
+            "x": 1620,
+            "y": 520,
+            "properties": {
+              "assetLibrary": "shikigami",
+              "selectedAsset": {
+                "id": "379",
+                "assetId": "shikigami:379",
+                "library": "shikigami",
+                "name": "Fukengaku",
+                "avatar": "/assets/Shikigami/ssr/379.png",
+                "rarity": "SSR",
+                "source": "team-code"
+              },
+              "width": 180,
+              "height": 180,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Fukengaku"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 200,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 180,
+                "height": 180
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "asset_mr1o5ae13w8uyly",
+            "type": "assetSelector",
+            "x": 1672,
+            "y": 583,
+            "properties": {
+              "assetLibrary": "yuhun",
+              "selectedAsset": {
+                "id": "300000",
+                "assetId": "yuhun:300000",
+                "library": "yuhun",
+                "name": "Set lẻ",
+                "shortName": "Set lẻ",
+                "type": "attack",
+                "avatar": "/assets/Yuhun/300000.png",
+                "source": "team-code"
+              },
+              "width": 75,
+              "height": 75,
+              "assetName": {
+                "visible": false,
+                "labelNodeId": null,
+                "offsetX": 0,
+                "offsetY": 78,
+                "lastSyncedAssetName": "Set lẻ"
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 0,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                },
+                "width": 75,
+                "height": 75
+              }
+            },
+            "zIndex": 1
+          },
+          {
+            "id": "group_mr1o5ae1yh73fig",
+            "type": "dynamic-group",
+            "x": 1620,
+            "y": 520,
+            "properties": {
+              "children": [
+                "asset_mr1o5ae1974rl9m",
+                "asset_mr1o5ae13w8uyly"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 216,
+              "height": 223,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 418,
+                "height": 252,
+                "rotate": 0,
+                "fill": "#ffffff",
+                "stroke": "#dcdfe6",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "rgba(0,0,0,0.1)",
+                  "blur": 4,
+                  "offsetX": 0,
+                  "offsetY": 2
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "shikigami",
+                "groupName": "Fukengaku",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "shikigami-yuhun",
+                  "shikigami-shikigami"
+                ]
+              }
+            },
+            "zIndex": -9993,
+            "children": [
+              "asset_mr1o5ae1974rl9m",
+              "asset_mr1o5ae13w8uyly"
+            ]
+          },
+          {
+            "id": "group_mr1o5ae1t8s755o",
+            "type": "dynamic-group",
+            "x": 970,
+            "y": 520,
+            "properties": {
+              "children": [
+                "group_mr1o5ae1wn4lsrw",
+                "group_mr1o5ae17ug1iy4",
+                "group_mr1o5ae1i7tvjlk",
+                "group_mr1o5ae1z2ikel2",
+                "group_mr1o5ae1w5eymfy",
+                "group_mr1o5ae1yh73fig"
+              ],
+              "collapsible": true,
+              "isCollapsed": false,
+              "width": 1830,
+              "height": 340,
+              "collapsedWidth": 100,
+              "collapsedHeight": 60,
+              "radius": 6,
+              "isRestrict": false,
+              "autoResize": false,
+              "transformWithContainer": false,
+              "autoToFront": true,
+              "meta": {
+                "visible": true,
+                "locked": false
+              },
+              "style": {
+                "width": 1830,
+                "height": 340,
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "#c7ced9",
+                "strokeWidth": 2,
+                "radius": 8,
+                "opacity": 1,
+                "shadow": {
+                  "color": "transparent",
+                  "blur": 0,
+                  "offsetX": 0,
+                  "offsetY": 0
+                }
+              },
+              "groupMeta": {
+                "version": 1,
+                "groupKind": "team",
+                "groupName": "【Sơn Thố đua tốc top 100】Tầng 10 · Đội hình",
+                "ruleEnabled": true,
+                "ruleScope": [
+                  "team-shikigami",
+                  "team-yuhun",
+                  "team-shikigami-yuhun"
+                ],
+                "teamCode": {
+                  "enabled": true,
+                  "shortCode": "|TA|b70d68cdb360572f71a1aa21c9859eee",
+                  "longCode": "",
+                  "preferred": "short",
+                  "label": ""
+                }
+              }
+            },
+            "zIndex": -9999,
+            "children": [
+              "group_mr1o5ae1wn4lsrw",
+              "group_mr1o5ae17ug1iy4",
+              "group_mr1o5ae1i7tvjlk",
+              "group_mr1o5ae1z2ikel2",
+              "group_mr1o5ae1w5eymfy",
+              "group_mr1o5ae1yh73fig"
+            ]
+          },
+          {
+            "id": "text_10_strategy_description",
+            "type": "textNode",
+            "x": 731.1354848535901,
+            "y": 874.8464619492646,
+            "properties": {
+              "width": 1036.7275785189304,
+              "height": 360,
+              "text": {
+                "content": "<p style=\"margin:0;text-align:left;font-size:32px;line-height:1.2;\"><span style=\"color: rgb(47, 83, 132);\">◆</span> Tốc độ: Amaterasu &gt;<strong style=\"color: rgb(0, 71, 178);\">250</strong>&gt; Izanami &gt;<strong style=\"color: rgb(0, 71, 178);\">200</strong>&gt; còn lại</p><p style=\"margin:0;text-align:left;font-size:32px;line-height:1.2;\"><span style=\"color: rgb(47, 83, 132);\">◆</span> Cấu hình: chỉ số Amaterasu <strong style=\"color: rgb(0, 71, 178);\">1.28w+</strong>, ATK <strong style=\"color: rgb(153, 51, 255);\">cao nhất ngoài Izanami</strong>; Inaba <strong style=\"color: rgb(0, 71, 178);\">380</strong> CDMG, Fukengaku <strong style=\"color: rgb(0, 71, 178);\">2400</strong> DEF</p><p style=\"margin:0;text-align:left;font-size:32px;line-height:1.2;\"><span style=\"color: rgb(47, 83, 132);\">◆</span> Thao tác: P1 Amaterasu dùng chiêu cuối dọn (<strong style=\"color: rgb(153, 51, 255);\">kích Kính Cơ ép máu còn rất thấp</strong> + Izanami giữ mạng); P2 Amaterasu dùng chiêu cuối dọn; P3 <strong style=\"color: rgb(0, 71, 178);\">Amaterasu dùng chiêu cuối, Izanami kết liễu</strong></p><p style=\"margin:0;text-align:left;font-size:32px;line-height:1.2;\"><span style=\"color: rgb(47, 83, 132);\">◆</span> Ghi chú: ① <strong style=\"color: rgb(153, 51, 255);\">Không có Amaterasu tốc cao</strong> · Phương án 1 ☞ đổi Inaba sang Enmusubi <strong style=\"color: rgb(0, 71, 178);\">250 tốc</strong>, khóa kỹ năng 2 kéo Amaterasu và cược P1 Kính Cơ ép máu; tốc Amaterasu <strong style=\"color: rgb(0, 71, 178);\">125+</strong></p><p style=\"margin:0;text-align:left;font-size:32px;line-height:1.2;\"><span style=\"color: rgb(255, 255, 255);\">◆ Ghi chú: ① Không có Amaterasu tốc cao ·</span>Phương án 2 ☞ đổi Fukengaku sang Kushi Hỏa Linh <strong style=\"color: rgb(0, 71, 178);\">250 tốc</strong>, khóa kỹ năng 2 kéo Amaterasu và cược P1 Kính Cơ ép máu</p><p style=\"margin:0;text-align:left;font-size:32px;line-height:1.2;\"><span style=\"color: rgb(255, 255, 255);\">◆ Ghi chú:</span>② Điểm ếch cao có thể làm mất người (<strong style=\"color: rgb(0, 71, 178);\">phụ thuộc RNG</strong>); dao động thời gian đến từ <strong style=\"color: rgb(0, 71, 178);\">điểm ếch / kích nội tại Ebisu gây kẹt giây</strong></p><p style=\"margin:0;text-align:left;font-size:32px;line-height:1.2;\"><span style=\"color: rgb(255, 255, 255);\">◆ Ghi chú:</span>③ Nếu điều kiện ngự hồn tốt ☞ <strong style=\"color: rgb(153, 51, 255);\">Amaterasu cũng có thể dùng Trấn Mộ Thú</strong></p>",
+                "rich": true
+              },
+              "style": {
+                "width": 860,
+                "height": 84,
+                "rotate": 0,
+                "fill": "transparent",
+                "stroke": "",
+                "strokeWidth": 1,
+                "radius": 4,
+                "opacity": 1,
+                "shadow": {
+                  "color": "transparent",
+                  "blur": 0,
+                  "offsetX": 0,
+                  "offsetY": 0
+                }
+              },
+              "meta": {
+                "visible": true,
+                "locked": false
+              }
+            },
+            "zIndex": 1000
+          }
+        ],
+        "edges": []
+      }
+    }
+  ],
+  "activeFileId": "flow-1",
+  "activeFile": "File 1"
+}

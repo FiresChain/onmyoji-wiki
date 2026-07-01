@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { getAuthorProfile } from '~/utils/author-profiles'
 import { loadSearchIndex } from '~/utils/search-index'
+import { getContentLocaleFromPath, type ContentLocale } from '~/utils/site-locale'
 
 definePageMeta({
-  path: '/:locale(zh|en)/authors'
+  path: '/:locale(zh|en|vi)/authors'
 })
 
 type SearchIndexItem = {
   path: string
-  lang: 'zh' | 'en'
+  lang: ContentLocale
   authorId: string
   authorName: string
   tags?: string[]
@@ -26,12 +27,40 @@ type AuthorCard = {
   updatedAt: string
 }
 
+const route = useRoute()
+const contentLocale = computed<ContentLocale>(() => getContentLocaleFromPath(route.path) || 'zh')
+
+const pageText = computed(() => {
+  if (contentLocale.value === 'vi') {
+    return {
+      home: 'Trang chủ',
+      title: 'Tác giả',
+      description: 'Mỗi tác giả có trang riêng, gồm phần giới thiệu và danh sách bài viết.',
+      authorFallback: 'Tác giả',
+      avatarAlt: 'avatar',
+      guideCount: 'Số hướng dẫn',
+      updatedAt: 'Cập nhật gần nhất'
+    }
+  }
+
+  return {
+    home: '首页',
+    title: '创作者',
+    description: '每位创作者均有独立主页，含自我介绍与文章列表。',
+    authorFallback: '作者',
+    avatarAlt: '头像',
+    guideCount: '攻略数',
+    updatedAt: '最近更新'
+  }
+})
+
 const { data: indexItems } = await useAsyncData('authors-search-index', async () => {
-  const [zh, en] = await Promise.all([
+  const [zh, en, vi] = await Promise.all([
     loadSearchIndex<SearchIndexItem>('zh'),
-    loadSearchIndex<SearchIndexItem>('en')
+    loadSearchIndex<SearchIndexItem>('en'),
+    loadSearchIndex<SearchIndexItem>('vi')
   ])
-  return [...zh, ...en]
+  return [...zh, ...en, ...vi]
 })
 
 const runtimeConfig = useRuntimeConfig()
@@ -121,12 +150,13 @@ const authorList = computed<AuthorCard[]>(() => {
 <template>
   <div>
     <PageHeader
-      title="创作者"
-      description="每位创作者均有独立主页，含自我介绍与文章列表。"
+      :title="pageText.title"
+      :description="pageText.description"
       :breadcrumbs="[
-        { label: '首页', href: '/' },
-        { label: '创作者' }
+        { label: pageText.home, href: `/${contentLocale}` },
+        { label: pageText.title }
       ]"
+      :breadcrumb-aria-label="contentLocale === 'vi' ? 'Điều hướng breadcrumb' : '面包屑导航'"
     />
 
     <section class="site-container authors-page">
@@ -141,17 +171,17 @@ const authorList = computed<AuthorCard[]>(() => {
             <img
               v-if="author.avatar && !brokenAuthorAvatars.has(author.id)"
               :src="author.avatar"
-              :alt="`${author.title} 头像`"
+              :alt="`${author.title} ${pageText.avatarAlt}`"
               loading="lazy"
               decoding="async"
               @error="markAuthorAvatarBroken(author.id)"
             >
-            <div v-else>作者</div>
+            <div v-else>{{ pageText.authorFallback }}</div>
           </div>
           <h2>{{ author.title }}</h2>
           <p class="author-tagline">{{ author.tagline }}</p>
           <p>{{ author.summary }}</p>
-          <p class="author-meta">攻略数：{{ author.guideCount }} · 最近更新：{{ author.updatedAt }}</p>
+          <p class="author-meta">{{ pageText.guideCount }}：{{ author.guideCount }} · {{ pageText.updatedAt }}：{{ author.updatedAt }}</p>
           <div class="author-tags">
             <span v-for="tag in author.tags" :key="tag">{{ tag }}</span>
           </div>

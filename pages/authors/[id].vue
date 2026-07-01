@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { getAuthorProfile } from '~/utils/author-profiles'
 import { loadSearchIndex } from '~/utils/search-index'
-import { getContentLocaleFromPath } from '~/utils/site-locale'
+import { getContentLocaleFromPath, type ContentLocale } from '~/utils/site-locale'
 
 definePageMeta({
-  path: '/:locale(zh|en)/authors/:id'
+  path: '/:locale(zh|en|vi)/authors/:id'
 })
 
 type SearchIndexItem = {
   path: string
   title: string
   summary?: string
-  lang: 'zh' | 'en'
+  lang: ContentLocale
   categoryL1: string
   categoryL2: string
   authorId: string
@@ -25,7 +25,7 @@ type AuthorGuide = {
   path: string
   title: string
   summary: string
-  lang: 'zh' | 'en'
+  lang: ContentLocale
   categoryL1: string
   categoryL2: string
   tags: string[]
@@ -35,7 +35,48 @@ type AuthorGuide = {
 
 const route = useRoute()
 const authorId = computed(() => String(route.params.id || '').trim())
-const contentLocale = computed<'zh' | 'en'>(() => getContentLocaleFromPath(route.path) || 'zh')
+const contentLocale = computed<ContentLocale>(() => getContentLocaleFromPath(route.path) || 'zh')
+const pageText = computed(() => {
+  if (contentLocale.value === 'vi') {
+    return {
+      home: 'Trang chủ',
+      authors: 'Tác giả',
+      missing: 'Không tìm thấy',
+      authorMissingTitle: 'Không tìm thấy tác giả',
+      authorMissingDescription: 'Không tìm thấy tác giả này hoặc tác giả chưa có bài viết.',
+      guideFallback: 'hướng dẫn',
+      authorSpaceFallback: 'không gian',
+      authorGuides: 'Hướng dẫn của tác giả',
+      noGuides: 'Tác giả này chưa có hướng dẫn công khai, nội dung sẽ được cập nhật sau.',
+      avatarAlt: 'avatar',
+      authorFallback: 'Tác giả',
+      publishedPrefix: 'Đã đăng',
+      publishedSuffix: 'hướng dẫn',
+      douyinHome: 'Trang Douyin',
+      bilibiliHome: 'Trang Bilibili',
+      coveredStages: 'Tầng bao phủ'
+    }
+  }
+
+  return {
+    home: '首页',
+    authors: '创作者',
+    missing: '未找到',
+    authorMissingTitle: '作者不存在',
+    authorMissingDescription: '未找到该作者或该作者尚无文章。',
+    guideFallback: '攻略',
+    authorSpaceFallback: '的空间',
+    authorGuides: '该作者攻略',
+    noGuides: '该作者暂时还没有公开攻略，后续会持续更新。',
+    avatarAlt: '头像',
+    authorFallback: '作者',
+    publishedPrefix: '共发布',
+    publishedSuffix: '篇攻略',
+    douyinHome: '抖音主页',
+    bilibiliHome: 'Bilibili 主页',
+    coveredStages: '覆盖层数'
+  }
+})
 const runtimeConfig = useRuntimeConfig()
 const resolvePublicAssetUrl = (path?: string) => {
   if (!path) {
@@ -71,11 +112,12 @@ const { data: authorStaticDoc } = await useAsyncData(
 const { data: indexItems } = await useAsyncData(
   () => `author-index-${authorId.value}`,
   async () => {
-    const [zh, en] = await Promise.all([
+    const [zh, en, vi] = await Promise.all([
       loadSearchIndex<SearchIndexItem>('zh'),
-      loadSearchIndex<SearchIndexItem>('en')
+      loadSearchIndex<SearchIndexItem>('en'),
+      loadSearchIndex<SearchIndexItem>('vi')
     ])
-    return [...zh, ...en]
+    return [...zh, ...en, ...vi]
   },
   { watch: [authorId] }
 )
@@ -96,7 +138,7 @@ const authorGuides = computed<AuthorGuide[]>(() => {
     const basePath = item.path.split('#')[0]
     const key = `${item.lang}|${basePath}`
     const tags = Array.isArray(item.tags) ? item.tags : []
-    const summary = item.summary?.trim() || `${item.categoryL1} / ${item.categoryL2} 攻略`
+    const summary = item.summary?.trim() || `${item.categoryL1} / ${item.categoryL2} ${pageText.value.guideFallback}`
 
     const existing = map.get(key)
     if (!existing) {
@@ -141,7 +183,7 @@ const guideCount = computed(() => authorGuides.value.length)
 const hasAuthor = computed(() => Boolean(authorId.value) && (guideCount.value > 0 || Boolean(authorStaticDoc.value)))
 const displayTagline = computed(() => authorStaticDoc.value?.tagline || authorProfile.value.tagline)
 const displayHeroTitle = computed(() => {
-  return authorStaticDoc.value?.heroTitle || `${authorProfile.value.name}的空间`
+  return authorStaticDoc.value?.heroTitle || `${authorProfile.value.name}${pageText.value.authorSpaceFallback}`
 })
 const displayHeroSubtitle = computed(() => authorStaticDoc.value?.heroSubtitle || '')
 const bilibiliUrl = computed(() => authorStaticDoc.value?.bilibiliUrl?.trim() || '')
@@ -172,10 +214,11 @@ const mergedTags = computed(() => {
       :title="authorProfile.name"
       :description="displayTagline"
       :breadcrumbs="[
-        { label: '首页', href: '/' },
-        { label: '创作者', href: '/authors' },
+        { label: pageText.home, href: `/${contentLocale}` },
+        { label: pageText.authors, href: `/${contentLocale}/authors` },
         { label: authorProfile.name }
       ]"
+      :breadcrumb-aria-label="contentLocale === 'vi' ? 'Điều hướng breadcrumb' : '面包屑导航'"
     />
 
     <section class="site-container author-detail">
@@ -194,7 +237,7 @@ const mergedTags = computed(() => {
         </section>
 
         <section v-if="authorGuides.length" class="author-guides">
-          <h2>该作者攻略</h2>
+          <h2>{{ pageText.authorGuides }}</h2>
           <div class="guides-grid">
             <NuxtLink v-for="guide in authorGuides" :key="guide.path" :to="guide.path" class="guide-card card">
               <div class="guide-meta">
@@ -204,13 +247,13 @@ const mergedTags = computed(() => {
               <h3>{{ guide.title }}</h3>
               <p>{{ guide.summary }}</p>
               <div v-if="guide.stages.length" class="guide-stages">
-                覆盖层数：{{ guide.stages.join(' / ') }}
+                {{ pageText.coveredStages }}：{{ guide.stages.join(' / ') }}
               </div>
             </NuxtLink>
           </div>
         </section>
         <section v-else class="card guides-empty">
-          该作者暂时还没有公开攻略，后续会持续更新。
+          {{ pageText.noGuides }}
         </section>
       </div>
 
@@ -221,12 +264,12 @@ const mergedTags = computed(() => {
               <img
                 v-if="displayAvatar && !isAvatarBroken"
                 :src="displayAvatar"
-                :alt="`${authorProfile.name} 头像`"
+                :alt="`${authorProfile.name} ${pageText.avatarAlt}`"
                 loading="lazy"
                 decoding="async"
                 @error="isAvatarBroken = true"
               >
-              <span v-else>作者</span>
+              <span v-else>{{ pageText.authorFallback }}</span>
             </div>
             <div class="author-title-wrap">
               <h2>{{ authorProfile.name }}</h2>
@@ -234,7 +277,7 @@ const mergedTags = computed(() => {
             </div>
           </div>
           <p class="bio">{{ authorProfile.bio }}</p>
-          <p class="meta">共发布 {{ guideCount }} 篇攻略</p>
+          <p class="meta">{{ pageText.publishedPrefix }} {{ guideCount }} {{ pageText.publishedSuffix }}</p>
           <a
             v-if="douyinUrl"
             class="douyin-link"
@@ -249,7 +292,7 @@ const mergedTags = computed(() => {
                 />
               </svg>
             </span>
-            <span>抖音主页</span>
+            <span>{{ pageText.douyinHome }}</span>
           </a>
           <a
             v-if="bilibiliUrl"
@@ -265,7 +308,7 @@ const mergedTags = computed(() => {
                 />
               </svg>
             </span>
-            <span>Bilibili 主页</span>
+            <span>{{ pageText.bilibiliHome }}</span>
           </a>
           <div class="author-tags">
             <span v-for="tag in mergedTags" :key="tag">{{ tag }}</span>
@@ -277,13 +320,14 @@ const mergedTags = computed(() => {
 
   <div v-else>
     <PageHeader
-      title="作者不存在"
-      description="未找到该作者或该作者尚无文章。"
+      :title="pageText.authorMissingTitle"
+      :description="pageText.authorMissingDescription"
       :breadcrumbs="[
-        { label: '首页', href: '/' },
-        { label: '创作者', href: '/authors' },
-        { label: '未找到' }
+        { label: pageText.home, href: `/${contentLocale}` },
+        { label: pageText.authors, href: `/${contentLocale}/authors` },
+        { label: pageText.missing }
       ]"
+      :breadcrumb-aria-label="contentLocale === 'vi' ? 'Điều hướng breadcrumb' : '面包屑导航'"
     />
   </div>
 </template>

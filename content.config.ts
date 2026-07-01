@@ -10,8 +10,9 @@ export default defineContentConfig({
       },
       schema: z.object({
         title: z.string(),
-        lang: z.enum(['zh', 'en']),
+        lang: z.enum(['zh', 'en', 'vi']),
         translationKey: z.string(),
+        routeKey: z.string().optional(),
         categoryL1: z.string(),
         categoryL2: z.string(),
         authorId: z.string(),
@@ -34,7 +35,7 @@ export default defineContentConfig({
       type: 'page',
       source: '**/authors/**/*.md',
       schema: z.object({
-        lang: z.enum(['zh', 'en']),
+        lang: z.enum(['zh', 'en', 'vi']),
         authorId: z.string(),
         title: z.string(),
         tagline: z.string().optional(),
