@@ -222,6 +222,14 @@ function formatStage(stage: string | number | undefined): string {
   return `第 ${stage} 层`
 }
 
+function decodeBreadcrumbLabel(segment: string): string {
+  try {
+    return decodeURIComponent(segment)
+  } catch {
+    return segment
+  }
+}
+
 const breadcrumbs = computed(() => {
   const segments = route.path.split('/').filter(Boolean)
   const items = [{ label: '首页', href: '/' as string | undefined }]
@@ -230,7 +238,7 @@ const breadcrumbs = computed(() => {
   segments.forEach((segment) => {
     cursor += `/${segment}`
     items.push({
-      label: segment,
+      label: decodeBreadcrumbLabel(segment),
       href: cursor as string | undefined
     })
   })
