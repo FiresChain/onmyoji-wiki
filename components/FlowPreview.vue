@@ -84,6 +84,9 @@ const loadFlowPreviewComponent = async () => {
     import("@rookie4show/onmyoji-flow/style.css"),
   ]);
   flowPreviewComponent.value = YysEditorPreview;
+  await nextTick();
+  updateViewportWidth();
+  applyPreviewFitView();
 };
 
 const resolveFlowEmbedLocale = (value: unknown): FlowEmbedLocale => {
