@@ -8,13 +8,14 @@ defineProps<{
   title: string
   description?: string
   breadcrumbs?: Crumb[]
+  breadcrumbAriaLabel?: string
 }>()
 </script>
 
 <template>
   <header class="page-header">
     <div class="site-container">
-      <nav v-if="breadcrumbs?.length" class="page-breadcrumbs" aria-label="面包屑导航">
+      <nav v-if="breadcrumbs?.length" class="page-breadcrumbs" :aria-label="breadcrumbAriaLabel || '面包屑导航'">
         <template v-for="(crumb, index) in breadcrumbs" :key="`${crumb.label}-${index}`">
           <span v-if="index > 0" class="page-breadcrumb-sep">/</span>
           <NuxtLink v-if="crumb.href" :to="crumb.href" class="page-breadcrumb-link">
@@ -29,4 +30,3 @@ defineProps<{
     </div>
   </header>
 </template>
-

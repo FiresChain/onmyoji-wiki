@@ -23,3 +23,4 @@ tags: [secret-zones, yamabunny, hub]
 
 - [Yamabunny Floors 1-10 Full Clear](/en/02_secret-zones/yamabunny-rampage/Sakura_Yamabunny_All_Stages)
 - [Yamabunny Floor 10 Budget Setup](/en/02_secret-zones/yamabunny-rampage/Kaze_Yamabunny_Floor10_Budget)
+- [Yamabunny Speedrun Top 100 Full Floors](/en/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages)

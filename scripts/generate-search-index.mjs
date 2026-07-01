@@ -4,7 +4,7 @@ import { parse as parseYaml } from 'yaml'
 
 const CONTENT_ROOT = path.resolve('content')
 const OUTPUT_ROOT = path.resolve('public', 'data')
-const SUPPORTED_LOCALES = ['zh', 'en']
+const SUPPORTED_LOCALES = ['zh', 'en', 'vi']
 
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/
 
@@ -42,7 +42,7 @@ function parseFrontmatter(markdown, filePath) {
   }
 }
 
-function toRoutePath(relativePath) {
+function toFileRoutePath(relativePath) {
   const normalized = relativePath.split(path.sep)
   const filename = normalized[normalized.length - 1]
   const basename = filename.replace(/\.md$/, '')
@@ -58,6 +58,22 @@ function toRoutePath(relativePath) {
   }
 
   return `/${[lang, ...subdirs, basename].join('/')}`
+}
+
+function normalizeRouteKey(routeKey) {
+  return String(routeKey || '')
+    .trim()
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/\/{2,}/g, '/')
+}
+
+function toRoutePath(relativePath, data) {
+  const lang = String(data.lang || relativePath.split(path.sep)[0] || '')
+  const routeKey = normalizeRouteKey(data.routeKey)
+  if (routeKey) {
+    return `/${lang}/${routeKey}`
+  }
+  return toFileRoutePath(relativePath)
 }
 
 function normalizeTags(tags) {
@@ -86,23 +102,26 @@ function getStageAnchor(stageAnchors, stage) {
   return typeof anchor === 'string' && anchor.length > 0 ? anchor : undefined
 }
 
-function createBaseEntry(data, routePath) {
+function createBaseEntry(data, routePath, legacyPath) {
   return {
     title: String(data.title || ''),
     summary: String(data.summary || ''),
     lang: String(data.lang || ''),
+    translationKey: String(data.translationKey || ''),
+    routeKey: normalizeRouteKey(data.routeKey),
     categoryL1: String(data.categoryL1 || ''),
     categoryL2: String(data.categoryL2 || ''),
     authorId: String(data.authorId || ''),
     authorName: String(data.authorName || ''),
     tags: normalizeTags(data.tags),
     updatedAt: String(data.updatedAt || ''),
-    path: routePath
+    path: routePath,
+    legacyPath
   }
 }
 
 function validateBaseEntry(entry, filePath) {
-  const requiredKeys = ['title', 'lang', 'categoryL1', 'categoryL2', 'authorId', 'authorName', 'updatedAt', 'path']
+  const requiredKeys = ['title', 'lang', 'translationKey', 'categoryL1', 'categoryL2', 'authorId', 'authorName', 'updatedAt', 'path']
   for (const key of requiredKeys) {
     if (!entry[key]) {
       throw new Error(`Missing required field "${key}" in ${filePath}`)
@@ -159,13 +178,16 @@ function sortEntries(entries) {
 async function main() {
   const files = await listMarkdownFiles(CONTENT_ROOT)
   const byLocale = Object.fromEntries(SUPPORTED_LOCALES.map((locale) => [locale, []]))
+  const contentRoutes = {
+    byTranslationKey: {},
+    byPath: {}
+  }
 
   for (const filePath of files) {
     const relativePath = path.relative(CONTENT_ROOT, filePath)
     const pathParts = relativePath.split(path.sep)
     const topLevelDir = pathParts[0]
     const secondLevelDir = pathParts[1]
-    const routePath = toRoutePath(relativePath)
     const basename = path.basename(filePath, '.md')
 
     // examples 目录仅用于演示，不参与线上检索索引。
@@ -194,8 +216,25 @@ async function main() {
       continue
     }
 
-    const baseEntry = createBaseEntry(data, routePath)
+    const legacyPath = toFileRoutePath(relativePath)
+    const routePath = toRoutePath(relativePath, data)
+    const baseEntry = createBaseEntry(data, routePath, legacyPath)
     validateBaseEntry(baseEntry, relativePath)
+
+    if (!contentRoutes.byTranslationKey[baseEntry.translationKey]) {
+      contentRoutes.byTranslationKey[baseEntry.translationKey] = {}
+    }
+    contentRoutes.byTranslationKey[baseEntry.translationKey][baseEntry.lang] = routePath
+
+    const routeMeta = {
+      translationKey: baseEntry.translationKey,
+      lang: baseEntry.lang,
+      path: routePath,
+      legacyPath,
+      routeKey: baseEntry.routeKey || undefined
+    }
+    contentRoutes.byPath[routePath] = routeMeta
+    contentRoutes.byPath[legacyPath] = routeMeta
 
     const stages = normalizeStages(data.stages)
     if (stages.length > 0) {
@@ -221,6 +260,10 @@ async function main() {
     await fs.writeFile(outputFile, JSON.stringify(items, null, 2) + '\n', 'utf8')
     console.log(`Generated ${path.relative(process.cwd(), outputFile)} (${items.length} items)`)
   }
+
+  const routeMapFile = path.join(OUTPUT_ROOT, 'content-routes.json')
+  await fs.writeFile(routeMapFile, JSON.stringify(contentRoutes, null, 2) + '\n', 'utf8')
+  console.log(`Generated ${path.relative(process.cwd(), routeMapFile)}`)
 }
 
 main().catch((error) => {

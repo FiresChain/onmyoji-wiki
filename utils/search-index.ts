@@ -1,8 +1,17 @@
-export type SearchIndexLocale = 'zh' | 'en'
+export type SearchIndexLocale = 'zh' | 'en' | 'vi'
 
-export async function loadSearchIndex<T = Record<string, unknown>>(locale: SearchIndexLocale): Promise<T[]> {
-  const fileName = `search-index.${locale}.json`
+export type ContentRouteMap = {
+  byTranslationKey: Record<string, Partial<Record<SearchIndexLocale, string>>>
+  byPath: Record<string, {
+    translationKey: string
+    lang: SearchIndexLocale
+    path: string
+    legacyPath?: string
+    routeKey?: string
+  }>
+}
 
+async function loadPublicDataFile<T>(fileName: string, fallback: T): Promise<T> {
   if (import.meta.server) {
     try {
       const [{ readFile }, { join }] = await Promise.all([
@@ -11,16 +20,28 @@ export async function loadSearchIndex<T = Record<string, unknown>>(locale: Searc
       ])
       const filePath = join(process.cwd(), 'public', 'data', fileName)
       const raw = await readFile(filePath, 'utf8')
-      const parsed = JSON.parse(raw)
-      return Array.isArray(parsed) ? (parsed as T[]) : []
+      return JSON.parse(raw) as T
     } catch (error) {
-      console.error(`[search-index] failed to load ${fileName} on server`, error)
-      return []
+      console.error(`[public-data] failed to load ${fileName} on server`, error)
+      return fallback
     }
   }
 
-  return $fetch<T[]>(`/data/${fileName}`).catch((error) => {
-    console.error(`[search-index] failed to load ${fileName} on client`, error)
-    return []
+  return $fetch<T>(`/data/${fileName}`).catch((error) => {
+    console.error(`[public-data] failed to load ${fileName} on client`, error)
+    return fallback
+  })
+}
+
+export async function loadSearchIndex<T = Record<string, unknown>>(locale: SearchIndexLocale): Promise<T[]> {
+  const fileName = `search-index.${locale}.json`
+  const parsed = await loadPublicDataFile<T[] | unknown>(fileName, [])
+  return Array.isArray(parsed) ? (parsed as T[]) : []
+}
+
+export async function loadContentRouteMap(): Promise<ContentRouteMap> {
+  return loadPublicDataFile<ContentRouteMap>('content-routes.json', {
+    byTranslationKey: {},
+    byPath: {}
   })
 }

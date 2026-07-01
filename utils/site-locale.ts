@@ -7,7 +7,7 @@ export const SITE_LOCALE_OPTIONS = [
 ] as const
 
 export type SiteLocale = typeof SITE_LOCALE_OPTIONS[number]['value']
-export type ContentLocale = 'zh' | 'en'
+export type ContentLocale = 'zh' | 'en' | 'vi'
 
 export const SITE_LOCALE_COOKIE = 'onmyoji_locale'
 
@@ -16,7 +16,7 @@ export const isSiteLocale = (value: unknown): value is SiteLocale => {
 }
 
 export const isContentLocale = (value: unknown): value is ContentLocale => {
-  return value === 'zh' || value === 'en'
+  return value === 'zh' || value === 'en' || value === 'vi'
 }
 
 export const getContentLocaleFromPath = (path: string): ContentLocale | null => {
@@ -34,7 +34,8 @@ const SITE_LOCALE_PATH_PREFIX_MAP: Record<SiteLocale, string> = {
 
 const CONTENT_LOCALE_ALIAS_MAP: Record<ContentLocale, SiteLocale> = {
   zh: 'zh-CN',
-  en: 'ja'
+  en: 'ja',
+  vi: 'vi'
 }
 
 export const siteLocaleToPathPrefix = (locale: SiteLocale): string => {
@@ -52,7 +53,7 @@ export const pathPrefixToSiteLocale = (prefix: string): SiteLocale | null => {
     return entry[0] as SiteLocale
   }
 
-  if (normalized === 'zh' || normalized === 'en') {
+  if (normalized === 'zh' || normalized === 'en' || normalized === 'vi') {
     return CONTENT_LOCALE_ALIAS_MAP[normalized]
   }
   return null
@@ -122,11 +123,17 @@ export const withSiteLocalePrefix = (path: string, locale: SiteLocale): string =
 }
 
 export const siteLocaleToContentLocale = (locale: SiteLocale): ContentLocale => {
-  return locale === 'zh-CN' || locale === 'zh-TW' ? 'zh' : 'en'
+  if (locale === 'zh-CN' || locale === 'zh-TW') {
+    return 'zh'
+  }
+  return locale === 'vi' ? 'vi' : 'en'
 }
 
 export const contentLocaleToDefaultSiteLocale = (locale: ContentLocale): SiteLocale => {
-  return locale === 'zh' ? 'zh-CN' : 'ja'
+  if (locale === 'zh') {
+    return 'zh-CN'
+  }
+  return locale === 'vi' ? 'vi' : 'ja'
 }
 
 const resolveSiteLocaleByTag = (tag: string): SiteLocale | null => {

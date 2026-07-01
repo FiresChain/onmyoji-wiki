@@ -1,6 +1,6 @@
 <script setup lang="ts">
 definePageMeta({
-  path: '/:locale(zh|en)/onmyoji'
+  path: '/:locale(zh|en|vi)/onmyoji'
 })
 
 type OnmyojiDoc = {

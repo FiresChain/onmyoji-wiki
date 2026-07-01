@@ -1,0 +1,135 @@
+{
+  "byTranslationKey": {
+    "guide-orochi-floor10-speedrun": {
+      "en": "/en/01_soul-zone/orochi/Sakura_Orochi_Floor10_Speedrun",
+      "zh": "/zh/01_御魂副本/魂土/樱花散_御魂十层速刷攻略"
+    },
+    "guide-yamabunny-floor10-budget": {
+      "en": "/en/02_secret-zones/yamabunny-rampage/Kaze_Yamabunny_Floor10_Budget",
+      "zh": "/zh/02_秘闻副本/山兔大暴走/风之痕_山兔大暴走第10层低配"
+    },
+    "guide-yamabunny-speedrun-top100-all-stages": {
+      "en": "/en/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages",
+      "vi": "/vi/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages",
+      "zh": "/zh/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages"
+    },
+    "guide-yamabunny-all-stages": {
+      "en": "/en/02_secret-zones/yamabunny-rampage/Sakura_Yamabunny_All_Stages",
+      "zh": "/zh/02_秘闻副本/山兔大暴走/樱花散_山兔大暴走1到10层通关"
+    },
+    "guide-duel-advanced": {
+      "en": "/en/03_pvp-arena/duel/Kaze_Duel_Advanced_Guide",
+      "zh": "/zh/03_斗技对抗/斗技场/风之痕_斗技实战进阶指南"
+    },
+    "guide-ouma-jitsuchigumo-4099-qingliu-preview": {
+      "zh": "/zh/05_逢魔之时/极·土蜘蛛/4099清流_协作包预览"
+    },
+    "guide-ouma-jitsuchigumo-maochuan-top": {
+      "zh": "/zh/05_逢魔之时/极·土蜘蛛/wiki-editor"
+    }
+  },
+  "byPath": {
+    "/en/01_soul-zone/orochi/Sakura_Orochi_Floor10_Speedrun": {
+      "translationKey": "guide-orochi-floor10-speedrun",
+      "lang": "en",
+      "path": "/en/01_soul-zone/orochi/Sakura_Orochi_Floor10_Speedrun",
+      "legacyPath": "/en/01_soul-zone/orochi/Sakura_Orochi_Floor10_Speedrun"
+    },
+    "/en/02_secret-zones/yamabunny-rampage/Kaze_Yamabunny_Floor10_Budget": {
+      "translationKey": "guide-yamabunny-floor10-budget",
+      "lang": "en",
+      "path": "/en/02_secret-zones/yamabunny-rampage/Kaze_Yamabunny_Floor10_Budget",
+      "legacyPath": "/en/02_secret-zones/yamabunny-rampage/Kaze_Yamabunny_Floor10_Budget"
+    },
+    "/en/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages": {
+      "translationKey": "guide-yamabunny-speedrun-top100-all-stages",
+      "lang": "en",
+      "path": "/en/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages",
+      "legacyPath": "/en/02_secret-zones/yamabunny-rampage/Matrix_Doctor_Yamabunny_Speedrun_Top100_All_Stages",
+      "routeKey": "secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages"
+    },
+    "/en/02_secret-zones/yamabunny-rampage/Matrix_Doctor_Yamabunny_Speedrun_Top100_All_Stages": {
+      "translationKey": "guide-yamabunny-speedrun-top100-all-stages",
+      "lang": "en",
+      "path": "/en/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages",
+      "legacyPath": "/en/02_secret-zones/yamabunny-rampage/Matrix_Doctor_Yamabunny_Speedrun_Top100_All_Stages",
+      "routeKey": "secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages"
+    },
+    "/en/02_secret-zones/yamabunny-rampage/Sakura_Yamabunny_All_Stages": {
+      "translationKey": "guide-yamabunny-all-stages",
+      "lang": "en",
+      "path": "/en/02_secret-zones/yamabunny-rampage/Sakura_Yamabunny_All_Stages",
+      "legacyPath": "/en/02_secret-zones/yamabunny-rampage/Sakura_Yamabunny_All_Stages"
+    },
+    "/en/03_pvp-arena/duel/Kaze_Duel_Advanced_Guide": {
+      "translationKey": "guide-duel-advanced",
+      "lang": "en",
+      "path": "/en/03_pvp-arena/duel/Kaze_Duel_Advanced_Guide",
+      "legacyPath": "/en/03_pvp-arena/duel/Kaze_Duel_Advanced_Guide"
+    },
+    "/vi/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages": {
+      "translationKey": "guide-yamabunny-speedrun-top100-all-stages",
+      "lang": "vi",
+      "path": "/vi/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages",
+      "legacyPath": "/vi/02_secret-zones/yamabunny-rampage/Son_Tho_Speedrun_Top100_All_Stages",
+      "routeKey": "secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages"
+    },
+    "/vi/02_secret-zones/yamabunny-rampage/Son_Tho_Speedrun_Top100_All_Stages": {
+      "translationKey": "guide-yamabunny-speedrun-top100-all-stages",
+      "lang": "vi",
+      "path": "/vi/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages",
+      "legacyPath": "/vi/02_secret-zones/yamabunny-rampage/Son_Tho_Speedrun_Top100_All_Stages",
+      "routeKey": "secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages"
+    },
+    "/zh/01_御魂副本/魂土/樱花散_御魂十层速刷攻略": {
+      "translationKey": "guide-orochi-floor10-speedrun",
+      "lang": "zh",
+      "path": "/zh/01_御魂副本/魂土/樱花散_御魂十层速刷攻略",
+      "legacyPath": "/zh/01_御魂副本/魂土/樱花散_御魂十层速刷攻略"
+    },
+    "/zh/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages": {
+      "translationKey": "guide-yamabunny-speedrun-top100-all-stages",
+      "lang": "zh",
+      "path": "/zh/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages",
+      "legacyPath": "/zh/02_秘闻副本/山兔大暴走/OnmyojiWiki_山兔竞速前百全层",
+      "routeKey": "secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages"
+    },
+    "/zh/02_秘闻副本/山兔大暴走/OnmyojiWiki_山兔竞速前百全层": {
+      "translationKey": "guide-yamabunny-speedrun-top100-all-stages",
+      "lang": "zh",
+      "path": "/zh/secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages",
+      "legacyPath": "/zh/02_秘闻副本/山兔大暴走/OnmyojiWiki_山兔竞速前百全层",
+      "routeKey": "secret-zones/yamabunny-rampage/guide-yamabunny-speedrun-top100-all-stages"
+    },
+    "/zh/02_秘闻副本/山兔大暴走/樱花散_山兔大暴走1到10层通关": {
+      "translationKey": "guide-yamabunny-all-stages",
+      "lang": "zh",
+      "path": "/zh/02_秘闻副本/山兔大暴走/樱花散_山兔大暴走1到10层通关",
+      "legacyPath": "/zh/02_秘闻副本/山兔大暴走/樱花散_山兔大暴走1到10层通关"
+    },
+    "/zh/02_秘闻副本/山兔大暴走/风之痕_山兔大暴走第10层低配": {
+      "translationKey": "guide-yamabunny-floor10-budget",
+      "lang": "zh",
+      "path": "/zh/02_秘闻副本/山兔大暴走/风之痕_山兔大暴走第10层低配",
+      "legacyPath": "/zh/02_秘闻副本/山兔大暴走/风之痕_山兔大暴走第10层低配"
+    },
+    "/zh/03_斗技对抗/斗技场/风之痕_斗技实战进阶指南": {
+      "translationKey": "guide-duel-advanced",
+      "lang": "zh",
+      "path": "/zh/03_斗技对抗/斗技场/风之痕_斗技实战进阶指南",
+      "legacyPath": "/zh/03_斗技对抗/斗技场/风之痕_斗技实战进阶指南"
+    },
+    "/zh/05_逢魔之时/极·土蜘蛛/4099清流_协作包预览": {
+      "translationKey": "guide-ouma-jitsuchigumo-4099-qingliu-preview",
+      "lang": "zh",
+      "path": "/zh/05_逢魔之时/极·土蜘蛛/4099清流_协作包预览",
+      "legacyPath": "/zh/05_逢魔之时/极·土蜘蛛/4099清流_协作包预览"
+    },
+    "/zh/05_逢魔之时/极·土蜘蛛/wiki-editor": {
+      "translationKey": "guide-ouma-jitsuchigumo-maochuan-top",
+      "lang": "zh",
+      "path": "/zh/05_逢魔之时/极·土蜘蛛/wiki-editor",
+      "legacyPath": "/zh/05_逢魔之时/极·土蜘蛛/wiki-editor"
+    }
+  }
+}

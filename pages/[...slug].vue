@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { loadSearchIndex } from '~/utils/search-index'
+import { isContentLocale, type ContentLocale } from '~/utils/site-locale'
 
 type SearchIndexItem = {
   path: string
   title: string
   summary?: string
-  lang: 'zh' | 'en'
+  lang: ContentLocale
   categoryL1: string
   categoryL2: string
   authorId: string
@@ -30,7 +31,9 @@ type ContentBody = {
 type ContentPage = {
   path?: string
   stem?: string
-  lang?: 'zh' | 'en'
+  lang?: ContentLocale
+  translationKey?: string
+  routeKey?: string
   title?: string
   summary?: string
   description?: string
@@ -49,6 +52,19 @@ type ContentPage = {
 
 const route = useRoute()
 const router = useRouter()
+
+const normalizeContentRouteKey = (routeKey: unknown): string => {
+  return String(routeKey || '')
+    .trim()
+    .replace(/^\/+|\/+$/g, '')
+    .replace(/\/{2,}/g, '/')
+}
+
+const buildStableContentPath = (item: Pick<ContentPage, 'lang' | 'routeKey'>): string => {
+  const lang = String(item.lang || '')
+  const routeKey = normalizeContentRouteKey(item.routeKey)
+  return lang && routeKey ? `/${lang}/${routeKey}` : ''
+}
 
 const resolveRoutePathVariants = (rawPath: string) => {
   const normalizedRaw = rawPath.startsWith('/') ? rawPath : `/${rawPath}`
@@ -85,7 +101,11 @@ const { data: page } = await useAsyncData<ContentPage>(
         doc = allDocs.find((item) => {
           const itemPath = String(item.path || '')
           const itemStem = String(item.stem || '')
-          return itemPath === decodedPath || itemStem === decodedStem
+          const stablePath = buildStableContentPath(item as ContentPage)
+          return itemPath === decodedPath
+            || itemStem === decodedStem
+            || stablePath === decodedPath
+            || stablePath === normalizedRaw
         })
       }
 
@@ -105,9 +125,100 @@ const { data: page } = await useAsyncData<ContentPage>(
 )
 
 const pathSegments = computed(() => route.path.split('/').filter(Boolean))
-const locale = computed<'zh' | 'en'>(() => {
+const locale = computed<ContentLocale>(() => {
   const lang = String(page.value?.lang || pathSegments.value[0] || 'zh')
-  return lang === 'en' ? 'en' : 'zh'
+  return isContentLocale(lang) ? lang : 'zh'
+})
+
+const pageText = computed(() => {
+  const textMap: Record<ContentLocale, {
+    home: string
+    notFoundTitle: string
+    notFoundDescription: string
+    author: string
+    createdAt: string
+    updatedAt: string
+    category: string
+    articleInfoAria: string
+    stageBrowserTitle: string
+    stageBrowserHint: string
+    allStages: string
+    noStageMatches: string
+    stagePrefix: string
+    stageSuffix: string
+    tocTitle: string
+    guideFallback: string
+    specialStages: Record<string, string>
+  }> = {
+    zh: {
+      home: '首页',
+      notFoundTitle: '页面不存在',
+      notFoundDescription: '未找到对应的 Markdown 页面。',
+      author: '作者',
+      createdAt: '创作日期',
+      updatedAt: '更新日期',
+      category: '分类',
+      articleInfoAria: '攻略信息',
+      stageBrowserTitle: '关卡横向筛选',
+      stageBrowserHint: '点击后可直接跳转到攻略对应章节锚点',
+      allStages: '全部',
+      noStageMatches: '当前筛选下暂无攻略。',
+      stagePrefix: '第',
+      stageSuffix: '层',
+      tocTitle: '本文目录',
+      guideFallback: '攻略',
+      specialStages: {
+        afk: '挂机',
+        extra: '番外'
+      }
+    },
+    en: {
+      home: 'Home',
+      notFoundTitle: 'Page not found',
+      notFoundDescription: 'The Markdown page could not be found.',
+      author: 'Author',
+      createdAt: 'Created',
+      updatedAt: 'Updated',
+      category: 'Category',
+      articleInfoAria: 'Guide info',
+      stageBrowserTitle: 'Stage browser',
+      stageBrowserHint: 'Click a floor to jump to the matching section anchor',
+      allStages: 'All',
+      noStageMatches: 'No guides match the current filter.',
+      stagePrefix: 'Floor',
+      stageSuffix: '',
+      tocTitle: 'Contents',
+      guideFallback: 'Guide',
+      specialStages: {
+        afk: 'AFK route',
+        extra: 'Extra stage'
+      }
+    },
+    vi: {
+      home: 'Trang chủ',
+      notFoundTitle: 'Không tìm thấy trang',
+      notFoundDescription: 'Không tìm thấy trang Markdown tương ứng.',
+      author: 'Tác giả',
+      createdAt: 'Ngày tạo',
+      updatedAt: 'Ngày cập nhật',
+      category: 'Danh mục',
+      articleInfoAria: 'Thông tin hướng dẫn',
+      stageBrowserTitle: 'Bộ lọc tầng',
+      stageBrowserHint: 'Bấm để nhảy thẳng tới mục tương ứng',
+      allStages: 'Tất cả',
+      noStageMatches: 'Không có hướng dẫn nào khớp bộ lọc hiện tại.',
+      stagePrefix: 'Tầng',
+      stageSuffix: '',
+      tocTitle: 'Mục lục',
+      guideFallback: 'hướng dẫn',
+      specialStages: {
+        afk: 'AFK',
+        extra: 'Ngoại truyện'
+      }
+    }
+  }
+
+  return textMap[locale.value] || textMap.zh
 })
 
 const isStageHub = computed(() => {
@@ -226,7 +337,15 @@ function formatStage(stage: string | number | undefined): string {
   if (stage === undefined) {
     return ''
   }
-  return `第 ${stage} 层`
+
+  if (typeof stage === 'number') {
+    return locale.value === 'en'
+      ? `${pageText.value.stagePrefix} ${stage}`
+      : `${pageText.value.stagePrefix} ${stage}${pageText.value.stageSuffix ? ` ${pageText.value.stageSuffix}` : ''}`
+  }
+
+  const normalizedStage = String(stage).trim().toLowerCase()
+  return pageText.value.specialStages[normalizedStage] || String(stage)
 }
 
 function decodeBreadcrumbLabel(segment: string): string {
@@ -239,7 +358,7 @@ function decodeBreadcrumbLabel(segment: string): string {
 
 const breadcrumbs = computed(() => {
   const segments = route.path.split('/').filter(Boolean)
-  const items = [{ label: '首页', href: '/' as string | undefined }]
+  const items = [{ label: pageText.value.home, href: '/' as string | undefined }]
   let cursor = ''
 
   segments.forEach((segment) => {
@@ -265,19 +384,49 @@ const hasArticleToc = computed(() => {
   return articleTocLinks.value.some((link) => link.id && link.text)
 })
 
-const difficultyLabels: Record<string, string> = {
-  beginner: '入门',
-  intermediate: '进阶',
-  advanced: '高阶'
+const difficultyLabels: Record<ContentLocale, Record<string, string>> = {
+  zh: {
+    beginner: '入门',
+    intermediate: '进阶',
+    advanced: '高阶'
+  },
+  en: {
+    beginner: 'Beginner',
+    intermediate: 'Intermediate',
+    advanced: 'Advanced'
+  },
+  vi: {
+    beginner: 'Cơ bản',
+    intermediate: 'Trung cấp',
+    advanced: 'Nâng cao'
+  }
 }
 
-const buildTypeLabels: Record<string, string> = {
-  budget: '低配',
-  'full-clear': '全层通关',
-  'high-score': '高分',
-  preview: '协作包预览',
-  pvp: '斗技',
-  speedrun: '竞速'
+const buildTypeLabels: Record<ContentLocale, Record<string, string>> = {
+  zh: {
+    budget: '低配',
+    'full-clear': '全层通关',
+    'high-score': '高分',
+    preview: '协作包预览',
+    pvp: '斗技',
+    speedrun: '竞速'
+  },
+  en: {
+    budget: 'Budget',
+    'full-clear': 'Full clear',
+    'high-score': 'High score',
+    preview: 'Collaboration preview',
+    pvp: 'PvP',
+    speedrun: 'Speedrun'
+  },
+  vi: {
+    budget: 'Đội hình tiết kiệm',
+    'full-clear': 'Toàn bộ tầng',
+    'high-score': 'Điểm cao',
+    preview: 'Xem trước gói cộng tác',
+    pvp: 'PvP',
+    speedrun: 'Đua tốc'
+  }
 }
 
 function formatDate(value: string | undefined): string {
@@ -290,7 +439,13 @@ function formatDate(value: string | undefined): string {
     return value
   }
 
-  return new Intl.DateTimeFormat(locale.value === 'en' ? 'en-US' : 'zh-CN', {
+  const formatterLocale = locale.value === 'vi'
+    ? 'vi-VN'
+    : locale.value === 'en'
+      ? 'en-US'
+      : 'zh-CN'
+
+  return new Intl.DateTimeFormat(formatterLocale, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit'
@@ -304,17 +459,17 @@ const authorPagePath = computed(() => {
   if (!authorId || authorId === 'official') {
     return ''
   }
-  return `/authors/${authorId}`
+  return `/${locale.value}/authors/${authorId}`
 })
 
 const difficultyLabel = computed(() => {
   const difficulty = page.value?.difficulty
-  return difficulty ? difficultyLabels[difficulty] || difficulty : ''
+  return difficulty ? difficultyLabels[locale.value]?.[difficulty] || difficulty : ''
 })
 
 const buildTypeLabel = computed(() => {
   const buildType = page.value?.buildType
-  return buildType ? buildTypeLabels[buildType] || buildType : ''
+  return buildType ? buildTypeLabels[locale.value]?.[buildType] || buildType : ''
 })
 
 const showArticleMeta = computed(() => {
@@ -339,6 +494,7 @@ const showArticleMeta = computed(() => {
       :title="page.title"
       :description="page.description || page.summary"
       :breadcrumbs="breadcrumbs"
+      :breadcrumb-aria-label="locale === 'vi' ? 'Điều hướng breadcrumb' : locale === 'en' ? 'Breadcrumb navigation' : '面包屑导航'"
     />
 
     <section
@@ -346,34 +502,35 @@ const showArticleMeta = computed(() => {
       :class="{ 'has-toc': hasArticleToc }"
     >
       <aside v-if="hasArticleToc" class="article-toc-sidebar">
-        <ArticleToc :toc="articleTocLinks" />
+        <ArticleToc :toc="articleTocLinks" :title="pageText.tocTitle" />
       </aside>
 
       <div class="fallback-main">
         <ArticleToc
           v-if="hasArticleToc"
           :toc="articleTocLinks"
+          :title="pageText.tocTitle"
           collapsible
           class="article-toc-inline"
         />
 
-        <section v-if="showArticleMeta" class="card article-meta" aria-label="攻略信息">
+        <section v-if="showArticleMeta" class="card article-meta" :aria-label="pageText.articleInfoAria">
           <div class="article-meta-primary">
             <div class="article-meta-item">
-              <span>作者</span>
+              <span>{{ pageText.author }}</span>
               <NuxtLink v-if="authorPagePath" :to="authorPagePath">{{ page.authorName || page.authorId }}</NuxtLink>
               <strong v-else>{{ page.authorName || page.authorId || '-' }}</strong>
             </div>
             <div v-if="createdDateLabel" class="article-meta-item">
-              <span>创作日期</span>
+              <span>{{ pageText.createdAt }}</span>
               <strong>{{ createdDateLabel }}</strong>
             </div>
             <div v-if="updatedDateLabel" class="article-meta-item">
-              <span>更新日期</span>
+              <span>{{ pageText.updatedAt }}</span>
               <strong>{{ updatedDateLabel }}</strong>
             </div>
             <div v-if="page.categoryL1 || page.categoryL2" class="article-meta-item">
-              <span>分类</span>
+              <span>{{ pageText.category }}</span>
               <strong>{{ [page.categoryL1, page.categoryL2].filter(Boolean).join(' / ') }}</strong>
             </div>
           </div>
@@ -396,8 +553,8 @@ const showArticleMeta = computed(() => {
 
         <section v-if="isStageHub && topicEntries.length" class="card stage-browser">
           <div class="stage-browser-head">
-            <h2>关卡横向筛选</h2>
-            <small>点击后可直接跳转到攻略对应章节锚点</small>
+            <h2>{{ pageText.stageBrowserTitle }}</h2>
+            <small>{{ pageText.stageBrowserHint }}</small>
           </div>
 
           <div class="stage-tabs">
@@ -406,7 +563,7 @@ const showArticleMeta = computed(() => {
               :class="{ 'is-active': selectedStage === 'all' }"
               @click="selectedStage = 'all'"
             >
-              全部
+              {{ pageText.allStages }}
             </button>
             <button
               v-for="stage in stageOptions"
@@ -431,14 +588,14 @@ const showArticleMeta = computed(() => {
                 <small>{{ item.updatedAt }}</small>
               </div>
               <strong>{{ item.title }}</strong>
-              <p>{{ item.summary || `${item.categoryL1} / ${item.categoryL2} 攻略` }}</p>
+              <p>{{ item.summary || `${item.categoryL1} / ${item.categoryL2} ${pageText.guideFallback}` }}</p>
               <div class="stage-guide-tail">
                 <span>{{ item.categoryL1 }} / {{ item.categoryL2 }}</span>
-                <span v-if="item.stage !== undefined">目标：{{ formatStage(item.stage) }}</span>
+                <span v-if="item.stage !== undefined">{{ formatStage(item.stage) }}</span>
               </div>
             </NuxtLink>
           </div>
-          <p v-else class="stage-empty">当前筛选下暂无攻略。</p>
+          <p v-else class="stage-empty">{{ pageText.noStageMatches }}</p>
         </section>
       </div>
     </section>
@@ -446,11 +603,12 @@ const showArticleMeta = computed(() => {
 
   <div v-else>
     <PageHeader
-      title="页面不存在"
-      description="未找到对应的 Markdown 页面。"
+      :title="pageText.notFoundTitle"
+      :description="pageText.notFoundDescription"
+      :breadcrumb-aria-label="locale === 'vi' ? 'Điều hướng breadcrumb' : locale === 'en' ? 'Breadcrumb navigation' : '面包屑导航'"
       :breadcrumbs="[
-        { label: '首页', href: '/' },
-        { label: '未找到' }
+        { label: pageText.home, href: '/' },
+        { label: pageText.notFoundTitle }
       ]"
     />
   </div>

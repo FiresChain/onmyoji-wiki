@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { loadSearchIndex } from '~/utils/search-index'
-import { getContentLocaleFromPath } from '~/utils/site-locale'
+import { getContentLocaleFromPath, type ContentLocale } from '~/utils/site-locale'
 
 definePageMeta({
-  path: '/:locale(zh|en)/guides'
+  path: '/:locale(zh|en|vi)/guides'
 })
 
 type SearchIndexItem = {
   path: string
   title: string
   summary?: string
-  lang: 'zh' | 'en'
+  lang: ContentLocale
   categoryL1: string
   categoryL2: string
   authorId: string
@@ -23,7 +23,7 @@ type GuideDoc = {
   path: string
   title: string
   summary: string
-  lang: 'zh' | 'en'
+  lang: ContentLocale
   categoryL1: string
   categoryL2: string
   authorId: string
@@ -34,7 +34,53 @@ type GuideDoc = {
 
 const route = useRoute()
 const router = useRouter()
-const contentLocale = computed<'zh' | 'en'>(() => getContentLocaleFromPath(route.path) || 'zh')
+const contentLocale = computed<ContentLocale>(() => getContentLocaleFromPath(route.path) || 'zh')
+
+const pageText = computed(() => {
+  if (contentLocale.value === 'vi') {
+    return {
+      home: 'Trang chủ',
+      title: 'Trung tâm hướng dẫn',
+      description: 'Dữ liệu demo hiện được tạo từ search-index khi build.',
+      stageFilter: 'Bộ lọc màn',
+      stageFilterHint: 'Chọn nhóm trước, sau đó chọn màn cụ thể',
+      allSeries: 'Tất cả nhóm',
+      all: 'Tất cả',
+      keyword: 'Từ khóa',
+      searchPlaceholder: 'Tìm tiêu đề, tag hoặc tác giả',
+      author: 'Tác giả',
+      guideFallback: 'hướng dẫn',
+      uncategorized: 'Chưa phân loại',
+      totalPrefix: 'Tổng cộng',
+      totalSuffix: 'hướng dẫn',
+      currentAuthor: 'tác giả hiện tại',
+      updatedAt: 'Cập nhật',
+      emptyTitle: 'Không tìm thấy hướng dẫn phù hợp',
+      emptyDescription: 'Hãy thử xóa từ khóa hoặc đổi bộ lọc.'
+    }
+  }
+
+  return {
+    home: '首页',
+    title: '攻略中心',
+    description: '当前为 mock 展示数据（来自 build 生成的 search-index）。',
+    stageFilter: '关卡筛选',
+    stageFilterHint: '先选系列，再选具体关卡',
+    allSeries: '全部系列',
+    all: '全部',
+    keyword: '关键词',
+    searchPlaceholder: '搜索标题、标签或作者',
+    author: '作者',
+    guideFallback: '攻略',
+    uncategorized: '未分类',
+    totalPrefix: '共',
+    totalSuffix: '篇攻略',
+    currentAuthor: '当前作者',
+    updatedAt: '更新于',
+    emptyTitle: '未找到匹配攻略',
+    emptyDescription: '可尝试清空关键词或切换筛选条件。'
+  }
+})
 
 const search = ref(typeof route.query.q === 'string' ? route.query.q : '')
 const selectedStageL1 = ref(
@@ -59,7 +105,7 @@ const guides = computed<GuideDoc[]>(() => {
   for (const item of indexItems.value ?? []) {
     const basePath = item.path.split('#')[0]
     const key = `${item.lang}|${basePath}`
-    const summary = item.summary?.trim() || `${item.categoryL1} / ${item.categoryL2} 攻略`
+    const summary = item.summary?.trim() || `${item.categoryL1} / ${item.categoryL2} ${pageText.value.guideFallback}`
     const tags = Array.isArray(item.tags) ? item.tags : []
     const existing = map.get(key)
 
@@ -110,8 +156,8 @@ type StageGroup = {
 const stageTree = computed<StageGroup[]>(() => {
   const grouped = new Map<string, Map<string, number>>()
   for (const guide of guides.value) {
-    const l1 = guide.categoryL1 || '未分类'
-    const l2 = guide.categoryL2 || '未分类'
+    const l1 = guide.categoryL1 || pageText.value.uncategorized
+    const l2 = guide.categoryL2 || pageText.value.uncategorized
     if (!grouped.has(l1)) {
       grouped.set(l1, new Map())
     }
@@ -254,19 +300,20 @@ watch([search, selectedStageL1, selectedStageL2, selectedAuthorId], () => {
 <template>
   <div>
     <PageHeader
-      title="攻略中心"
-      description="当前为 mock 展示数据（来自 build 生成的 search-index）。"
+      :title="pageText.title"
+      :description="pageText.description"
       :breadcrumbs="[
-        { label: '首页', href: '/' },
-        { label: '攻略中心' }
+        { label: pageText.home, href: `/${contentLocale}` },
+        { label: pageText.title }
       ]"
+      :breadcrumb-aria-label="contentLocale === 'vi' ? 'Điều hướng breadcrumb' : '面包屑导航'"
     />
 
     <section class="site-container guides-page">
       <aside class="guides-sidebar card">
         <div class="stage-filter-head">
-          <h2>关卡筛选</h2>
-          <small>先选系列，再选具体关卡</small>
+          <h2>{{ pageText.stageFilter }}</h2>
+          <small>{{ pageText.stageFilterHint }}</small>
         </div>
 
         <button
@@ -275,7 +322,7 @@ watch([search, selectedStageL1, selectedStageL2, selectedAuthorId], () => {
           :class="{ 'is-active': selectedStageL1 === 'all' }"
           @click="handleSelectAllStage"
         >
-          <span>全部系列</span>
+          <span>{{ pageText.allSeries }}</span>
           <small>{{ guides.length }}</small>
         </button>
 
@@ -305,7 +352,7 @@ watch([search, selectedStageL1, selectedStageL2, selectedAuthorId], () => {
                 :class="{ 'is-active': selectedStageL1 === group.name && selectedStageL2 === 'all' }"
                 @click="handleSelectStageL1(group.name)"
               >
-                全部
+                {{ pageText.all }}
               </button>
               <button
                 v-for="child in group.children"
@@ -324,12 +371,12 @@ watch([search, selectedStageL1, selectedStageL2, selectedAuthorId], () => {
 
         <div class="guides-filters">
           <label>
-            <span>关键词</span>
-            <input v-model="search" type="search" placeholder="搜索标题、标签或作者">
+            <span>{{ pageText.keyword }}</span>
+            <input v-model="search" type="search" :placeholder="pageText.searchPlaceholder">
           </label>
 
           <div class="guides-category-row">
-            <span>作者</span>
+            <span>{{ pageText.author }}</span>
             <button
               type="button"
               :class="{ 'is-active': selectedAuthorId === 'all' }"
@@ -352,10 +399,10 @@ watch([search, selectedStageL1, selectedStageL2, selectedAuthorId], () => {
 
       <div class="guides-content">
         <p class="guides-count">
-          共 {{ filteredGuides.length }} 篇攻略
+          {{ pageText.totalPrefix }} {{ filteredGuides.length }} {{ pageText.totalSuffix }}
           <span v-if="selectedStageL1 !== 'all'"> · {{ selectedStageL1 }}</span>
           <span v-if="selectedStageL2 !== 'all'"> / {{ selectedStageL2 }}</span>
-          <span v-if="selectedAuthorName">（当前作者：{{ selectedAuthorName }}）</span>
+          <span v-if="selectedAuthorName">（{{ pageText.currentAuthor }}：{{ selectedAuthorName }}）</span>
         </p>
 
         <div v-if="filteredGuides.length" class="guides-list">
@@ -367,12 +414,12 @@ watch([search, selectedStageL1, selectedStageL2, selectedAuthorId], () => {
           >
             <div class="guides-card-meta">
               <span>{{ guide.categoryL1 }} / {{ guide.categoryL2 }}</span>
-              <small>更新于 {{ guide.updatedAt }}</small>
+              <small>{{ pageText.updatedAt }} {{ guide.updatedAt }}</small>
             </div>
             <h2>{{ guide.title }}</h2>
             <p>{{ guide.summary }}</p>
             <div class="guides-card-tail">
-              <span>作者：{{ guide.authorName }}（{{ guide.authorId }}）</span>
+              <span>{{ pageText.author }}：{{ guide.authorName }}（{{ guide.authorId }}）</span>
               <div class="guides-tags">
                 <span v-for="tag in guide.tags.slice(0, 4)" :key="tag">{{ tag }}</span>
               </div>
@@ -381,8 +428,8 @@ watch([search, selectedStageL1, selectedStageL2, selectedAuthorId], () => {
         </div>
 
         <div v-else class="guides-empty card">
-          <h2>未找到匹配攻略</h2>
-          <p>可尝试清空关键词或切换筛选条件。</p>
+          <h2>{{ pageText.emptyTitle }}</h2>
+          <p>{{ pageText.emptyDescription }}</p>
         </div>
       </div>
     </section>
