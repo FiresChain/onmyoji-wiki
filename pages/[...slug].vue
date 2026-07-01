@@ -15,6 +15,18 @@ type SearchIndexItem = {
   stage?: string | number
 }
 
+type TocLink = {
+  id?: string
+  text?: string
+  children?: TocLink[]
+}
+
+type ContentBody = {
+  toc?: {
+    links?: TocLink[]
+  }
+}
+
 type ContentPage = {
   path?: string
   stem?: string
@@ -24,7 +36,7 @@ type ContentPage = {
   description?: string
   categoryL1?: string
   categoryL2?: string
-  body?: unknown
+  body?: ContentBody
   __missing?: boolean
 }
 
@@ -229,6 +241,14 @@ const breadcrumbs = computed(() => {
 
   return items
 })
+
+const articleTocLinks = computed<TocLink[]>(() => {
+  return page.value?.body?.toc?.links ?? []
+})
+
+const hasArticleToc = computed(() => {
+  return articleTocLinks.value.some((link) => link.id && link.text)
+})
 </script>
 
 <template>
@@ -240,59 +260,75 @@ const breadcrumbs = computed(() => {
       :breadcrumbs="breadcrumbs"
     />
 
-    <section class="site-container fallback-content">
-      <article class="card fallback-article">
-        <div class="wiki-prose">
-          <ContentRenderer :value="page" />
-        </div>
-      </article>
+    <section
+      class="site-container fallback-content"
+      :class="{ 'has-toc': hasArticleToc }"
+    >
+      <aside v-if="hasArticleToc" class="article-toc-sidebar">
+        <ArticleToc :toc="articleTocLinks" />
+      </aside>
 
-      <section v-if="isStageHub && topicEntries.length" class="card stage-browser">
-        <div class="stage-browser-head">
-          <h2>关卡横向筛选</h2>
-          <small>点击后可直接跳转到攻略对应章节锚点</small>
-        </div>
+      <div class="fallback-main">
+        <ArticleToc
+          v-if="hasArticleToc"
+          :toc="articleTocLinks"
+          collapsible
+          class="article-toc-inline"
+        />
 
-        <div class="stage-tabs">
-          <button
-            type="button"
-            :class="{ 'is-active': selectedStage === 'all' }"
-            @click="selectedStage = 'all'"
-          >
-            全部
-          </button>
-          <button
-            v-for="stage in stageOptions"
-            :key="String(stage)"
-            type="button"
-            :class="{ 'is-active': selectedStage === String(stage) }"
-            @click="selectedStage = String(stage)"
-          >
-            {{ formatStage(stage) }}
-          </button>
-        </div>
+        <article class="card fallback-article">
+          <div class="wiki-prose">
+            <ContentRenderer :value="page" />
+          </div>
+        </article>
 
-        <div v-if="stageFilteredEntries.length" class="stage-guide-list">
-          <NuxtLink
-            v-for="item in stageFilteredEntries"
-            :key="`${item.path}-${item.authorId}-${item.updatedAt}-${item.stage ?? 'all'}`"
-            :to="item.path"
-            class="stage-guide-item"
-          >
-            <div class="stage-guide-meta">
-              <span>{{ item.authorName }}</span>
-              <small>{{ item.updatedAt }}</small>
-            </div>
-            <strong>{{ item.title }}</strong>
-            <p>{{ item.summary || `${item.categoryL1} / ${item.categoryL2} 攻略` }}</p>
-            <div class="stage-guide-tail">
-              <span>{{ item.categoryL1 }} / {{ item.categoryL2 }}</span>
-              <span v-if="item.stage !== undefined">目标：{{ formatStage(item.stage) }}</span>
-            </div>
-          </NuxtLink>
-        </div>
-        <p v-else class="stage-empty">当前筛选下暂无攻略。</p>
-      </section>
+        <section v-if="isStageHub && topicEntries.length" class="card stage-browser">
+          <div class="stage-browser-head">
+            <h2>关卡横向筛选</h2>
+            <small>点击后可直接跳转到攻略对应章节锚点</small>
+          </div>
+
+          <div class="stage-tabs">
+            <button
+              type="button"
+              :class="{ 'is-active': selectedStage === 'all' }"
+              @click="selectedStage = 'all'"
+            >
+              全部
+            </button>
+            <button
+              v-for="stage in stageOptions"
+              :key="String(stage)"
+              type="button"
+              :class="{ 'is-active': selectedStage === String(stage) }"
+              @click="selectedStage = String(stage)"
+            >
+              {{ formatStage(stage) }}
+            </button>
+          </div>
+
+          <div v-if="stageFilteredEntries.length" class="stage-guide-list">
+            <NuxtLink
+              v-for="item in stageFilteredEntries"
+              :key="`${item.path}-${item.authorId}-${item.updatedAt}-${item.stage ?? 'all'}`"
+              :to="item.path"
+              class="stage-guide-item"
+            >
+              <div class="stage-guide-meta">
+                <span>{{ item.authorName }}</span>
+                <small>{{ item.updatedAt }}</small>
+              </div>
+              <strong>{{ item.title }}</strong>
+              <p>{{ item.summary || `${item.categoryL1} / ${item.categoryL2} 攻略` }}</p>
+              <div class="stage-guide-tail">
+                <span>{{ item.categoryL1 }} / {{ item.categoryL2 }}</span>
+                <span v-if="item.stage !== undefined">目标：{{ formatStage(item.stage) }}</span>
+              </div>
+            </NuxtLink>
+          </div>
+          <p v-else class="stage-empty">当前筛选下暂无攻略。</p>
+        </section>
+      </div>
     </section>
   </div>
 
@@ -315,12 +351,38 @@ const breadcrumbs = computed(() => {
   gap: 14px;
 }
 
+.fallback-content.has-toc {
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.article-toc-sidebar {
+  position: sticky;
+  top: 92px;
+  max-height: calc(100vh - 116px);
+  overflow: auto;
+  padding: 14px 2px 14px 0;
+}
+
+.fallback-main {
+  min-width: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.article-toc-inline {
+  display: none;
+}
+
 .fallback-article {
   padding: 22px;
+  min-width: 0;
 }
 
 .stage-browser {
   padding: 16px;
+  min-width: 0;
 }
 
 .stage-browser-head {
@@ -412,5 +474,19 @@ const breadcrumbs = computed(() => {
 .stage-empty {
   margin: 12px 0 0;
   color: var(--color-muted);
+}
+
+@media (max-width: 900px) {
+  .fallback-content.has-toc {
+    grid-template-columns: 1fr;
+  }
+
+  .article-toc-sidebar {
+    display: none;
+  }
+
+  .article-toc-inline {
+    display: block;
+  }
 }
 </style>
