@@ -16,6 +16,7 @@ export default defineContentConfig({
         categoryL2: z.string(),
         authorId: z.string(),
         authorName: z.string(),
+        createdAt: z.string().optional(),
         updatedAt: z.string(),
         summary: z.string(),
         description: z.string().optional(),

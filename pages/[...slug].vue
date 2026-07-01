@@ -36,6 +36,13 @@ type ContentPage = {
   description?: string
   categoryL1?: string
   categoryL2?: string
+  authorId?: string
+  authorName?: string
+  createdAt?: string
+  updatedAt?: string
+  tags?: string[]
+  difficulty?: string
+  buildType?: string
   body?: ContentBody
   __missing?: boolean
 }
@@ -257,6 +264,72 @@ const articleTocLinks = computed<TocLink[]>(() => {
 const hasArticleToc = computed(() => {
   return articleTocLinks.value.some((link) => link.id && link.text)
 })
+
+const difficultyLabels: Record<string, string> = {
+  beginner: '入门',
+  intermediate: '进阶',
+  advanced: '高阶'
+}
+
+const buildTypeLabels: Record<string, string> = {
+  budget: '低配',
+  'full-clear': '全层通关',
+  'high-score': '高分',
+  preview: '协作包预览',
+  pvp: '斗技',
+  speedrun: '竞速'
+}
+
+function formatDate(value: string | undefined): string {
+  if (!value) {
+    return ''
+  }
+
+  const timestamp = Date.parse(value)
+  if (!Number.isFinite(timestamp)) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat(locale.value === 'en' ? 'en-US' : 'zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date(timestamp))
+}
+
+const createdDateLabel = computed(() => formatDate(page.value?.createdAt || page.value?.updatedAt))
+const updatedDateLabel = computed(() => formatDate(page.value?.updatedAt))
+const authorPagePath = computed(() => {
+  const authorId = page.value?.authorId?.trim()
+  if (!authorId || authorId === 'official') {
+    return ''
+  }
+  return `/authors/${authorId}`
+})
+
+const difficultyLabel = computed(() => {
+  const difficulty = page.value?.difficulty
+  return difficulty ? difficultyLabels[difficulty] || difficulty : ''
+})
+
+const buildTypeLabel = computed(() => {
+  const buildType = page.value?.buildType
+  return buildType ? buildTypeLabels[buildType] || buildType : ''
+})
+
+const showArticleMeta = computed(() => {
+  return Boolean(
+    page.value?.authorName
+      || page.value?.authorId
+      || page.value?.createdAt
+      || page.value?.updatedAt
+      || page.value?.categoryL1
+      || page.value?.categoryL2
+      || page.value?.difficulty
+      || page.value?.buildType
+      || page.value?.tags?.length
+  )
+})
 </script>
 
 <template>
@@ -283,6 +356,37 @@ const hasArticleToc = computed(() => {
           collapsible
           class="article-toc-inline"
         />
+
+        <section v-if="showArticleMeta" class="card article-meta" aria-label="攻略信息">
+          <div class="article-meta-primary">
+            <div class="article-meta-item">
+              <span>作者</span>
+              <NuxtLink v-if="authorPagePath" :to="authorPagePath">{{ page.authorName || page.authorId }}</NuxtLink>
+              <strong v-else>{{ page.authorName || page.authorId || '-' }}</strong>
+            </div>
+            <div v-if="createdDateLabel" class="article-meta-item">
+              <span>创作日期</span>
+              <strong>{{ createdDateLabel }}</strong>
+            </div>
+            <div v-if="updatedDateLabel" class="article-meta-item">
+              <span>更新日期</span>
+              <strong>{{ updatedDateLabel }}</strong>
+            </div>
+            <div v-if="page.categoryL1 || page.categoryL2" class="article-meta-item">
+              <span>分类</span>
+              <strong>{{ [page.categoryL1, page.categoryL2].filter(Boolean).join(' / ') }}</strong>
+            </div>
+          </div>
+
+          <div
+            v-if="difficultyLabel || buildTypeLabel || page.tags?.length"
+            class="article-meta-secondary"
+          >
+            <span v-if="difficultyLabel">{{ difficultyLabel }}</span>
+            <span v-if="buildTypeLabel">{{ buildTypeLabel }}</span>
+            <span v-for="tag in page.tags || []" :key="tag">{{ tag }}</span>
+          </div>
+        </section>
 
         <article class="card fallback-article">
           <div class="wiki-prose">
@@ -386,6 +490,56 @@ const hasArticleToc = computed(() => {
 .fallback-article {
   padding: 22px;
   min-width: 0;
+}
+
+.article-meta {
+  padding: 14px 16px;
+  min-width: 0;
+}
+
+.article-meta-primary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.article-meta-item {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.article-meta-item span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.article-meta-item strong,
+.article-meta-item a {
+  color: var(--color-foreground);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.article-meta-item a:hover {
+  color: var(--color-primary);
+}
+
+.article-meta-secondary {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.article-meta-secondary span {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 3px 8px;
+  background: var(--color-surface-soft);
+  color: var(--color-muted);
+  font-size: 12px;
 }
 
 .stage-browser {
@@ -495,6 +649,16 @@ const hasArticleToc = computed(() => {
 
   .article-toc-inline {
     display: block;
+  }
+
+  .article-meta-primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .article-meta-primary {
+    grid-template-columns: 1fr;
   }
 }
 </style>
